@@ -1,4 +1,4 @@
-@DientesLimpios.API_HostAddress = http://localhost:5298/api/dentistas
+@DientesLimpios.API_HostAddress = https://localhost:7199/api/v1/dentistas
 
 GET {{DientesLimpios.API_HostAddress}}/019b6e33-fbfe-7f25-baac-5ad8f6b0a116
 Accept: application/json
@@ -7,6 +7,7 @@ Accept: application/json
 
 GET {{DientesLimpios.API_HostAddress}}?pagina=1&RegistrosPorPagina=10
 Accept: application/json
+Authorization: Bearer CfDJ8AjPuzL6wyBPmF8c2rZ0-e9qzUippWb1_ScWHYJkB8ixrYHZOrQhNUbU3bdmAgw-2KJmOnV5uPEClgNS22gytyC-TaBK-uhng_JF10nin-Qji8uXxsLKp0DMssflPZ9rBiXw4FHw8Wv_LVW2ODnbJl6-nQ1KDWivPpoMNFDVAxCRBcy50T1e5WqCuLl4ipPbUJsr1PhzEnzMkWZ4OVct0libUvWnpMe6mPsUxLmwgZdyTI2-waszBUVAD_EJRtjOnok7crzD7E3_7eAuiOCYxvCbh6Cq0gc7o0Kg6I5nUbXq0Qp2sysv576O2JhKE3mEqw76MfbLo1rEC97GrvwFiDbjEbH4_AaG3X6f89g6nJVwnMpx602mrUOLKTF-egQwxUiOzsk3c-R1uH0UgJNW75L_HSHJkguyQrBkE1IgoeYNwlx42RA8iwX6NDabRW-bUtX17B5JpKssvulEnvXXV5cy4UwFx054Zup321_6eAehkjd4MdKyLddYv_yg9KcT-ZYsQa6SLtGS39aoaNtnNJ-S2IBKC0_OumSMdDi0vAWcAa4KS3ok96LKaACLvSKHdf5h_MaAFA_9wsWVCWF3CoRyXkdtZGkDk7Gsp6XkRMKyJsJ35A7WyI8ooiMUfX0rUzBiThiM-GhSlWQJ9PgpZRlMAbAtZSKbMidrjphq5DaOlILbolcgR-wHbGlIanDuqBSAJEv-1IHcS9WPC1Ifl43lp7ihQGsP0RZJvlPObuj2
 
 ###
 

@@ -4,13 +4,16 @@ using DientesLimpios.Aplicacion.CasosdeUso.Citas.Comandos.CrearCita;
 using DientesLimpios.Aplicacion.CasosdeUso.Citas.Consultas.ObtenerDetalleCita;
 using DientesLimpios.Aplicacion.CasosdeUso.Citas.Consultas.ObtenerListadoCitas;
 using MediatR;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Asp.Versioning;
 
 namespace DientesLimpios.API.Controllers
 {
-    [Route("api/[controller]")]
+    // 1. Change the Route to include the version
+    [Route("api/v{version:apiVersion}/[controller]")]
     [ApiController]
+    // 2. Define the version for this controller
+    [ApiVersion("1.0")]
     public class CitasController(IMediator mediator) : ControllerBase
     {
         [HttpGet]
