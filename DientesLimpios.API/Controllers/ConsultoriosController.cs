@@ -29,7 +29,7 @@ namespace DientesLimpios.API.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<ConsultorioDetalleDTO>> Get(Guid id)
         {
-            var consulta = new ConsultaObtenerDetalleConsultorio { Id = id }; ;
+            var consulta = new ConsultaObtenerDetalleConsultorio { Id = id };
             var resultado = await mediator.Send(consulta);
             return resultado;
         }
