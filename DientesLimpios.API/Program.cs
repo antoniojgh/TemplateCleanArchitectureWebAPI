@@ -7,66 +7,94 @@ using DientesLimpios.Identidad;
 using DientesLimpios.Identidad.Modelos;
 using Microsoft.AspNetCore.Mvc.Authorization;
 using Asp.Versioning;
+using Serilog;
 
-var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Setup the initial logger with Serilog
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
 
-builder.Services.AddControllers(opciones =>
+try
 {
-    // Agregar un filtro global de autorización para proteger todos los endpoints por defecto
-    opciones.Filters.Add(new AuthorizeFilter("esadmin"));
-});
+    Log.Information("Starting Web API...");
+    var builder = WebApplication.CreateBuilder(args);
 
-// Inyección de dependencias de la capa de Aplicación, Persistencia e Infraestructura
-builder.Services.AgregarServiciosDeAplicacion();
-builder.Services.AgregarServiciosDePersistencia();
-builder.Services.AgregarServiciosDeInfraestructura();
-builder.Services.AgregarServiciosDeIdentidad();
+    // Add Serilog to the Host
+    builder.Host.UseSerilog((context, services, configuration) => configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext());
 
-// Agregar el servicio de trabajo en segundo plano para el recordatorio de citas
-builder.Services.AddHostedService<RecordatorioCitasJob>();
+    // Add services to the container.
 
-// Configuración de versionado de API
-builder.Services.AddApiVersioning(options =>
-{
-    // 1. Set the default version to 1.0
-    options.DefaultApiVersion = new ApiVersion(1, 0);
+    builder.Services.AddControllers(opciones =>
+    {
+        // Agregar un filtro global de autorización para proteger todos los endpoints por defecto
+        opciones.Filters.Add(new AuthorizeFilter("esadmin"));
+    });
 
-    // 2. If the client doesn't specify a version, use the default (1.0)
-    // This is critical to avoid breaking existing clients that don't send a version yet.
-    options.AssumeDefaultVersionWhenUnspecified = true;
+    // Inyección de dependencias de la capa de Aplicación, Persistencia e Infraestructura
+    builder.Services.AgregarServiciosDeAplicacion();
+    builder.Services.AgregarServiciosDePersistencia();
+    builder.Services.AgregarServiciosDeInfraestructura();
+    builder.Services.AgregarServiciosDeIdentidad();
 
-    // 3. Report the supported versions in the HTTP response headers (api-supported-versions)
-    options.ReportApiVersions = true;
+    // Agregar el servicio de trabajo en segundo plano para el recordatorio de citas
+    builder.Services.AddHostedService<RecordatorioCitasJob>();
 
-    // 4. Read the version from the URL (e.g., /api/v1/citas)
-    // You can also configure it to read from Header or QueryString here if preferred.
-    options.ApiVersionReader = new UrlSegmentApiVersionReader();
-})
-.AddMvc(); // Add MVC support for versioning
+    // Configuración de versionado de API
+    builder.Services.AddApiVersioning(options =>
+    {
+        // 1. Set the default version to 1.0
+        options.DefaultApiVersion = new ApiVersion(1, 0);
+
+        // 2. If the client doesn't specify a version, use the default (1.0)
+        // This is critical to avoid breaking existing clients that don't send a version yet.
+        options.AssumeDefaultVersionWhenUnspecified = true;
+
+        // 3. Report the supported versions in the HTTP response headers (api-supported-versions)
+        options.ReportApiVersions = true;
+
+        // 4. Read the version from the URL (e.g., /api/v1/citas)
+        // You can also configure it to read from Header or QueryString here if preferred.
+        options.ApiVersionReader = new UrlSegmentApiVersionReader();
+    })
+    .AddMvc(); // Add MVC support for versioning
 
 
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+    // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+    builder.Services.AddOpenApi();
 
-var app = builder.Build();
+    var app = builder.Build();
 
-app.MapIdentityApi<Usuario>();
+    // Add Request Logging Middleware
+    app.UseSerilogRequestLogging();
 
-// Agregar el middleware personalizado para el manejo de excepciones
-app.UseManejadorExcepciones();
+    app.MapIdentityApi<Usuario>();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
+    // Agregar el middleware personalizado para el manejo de excepciones
+    app.UseManejadorExcepciones();
+
+    // Configure the HTTP request pipeline.
+    if (app.Environment.IsDevelopment())
+    {
+        app.MapOpenApi();
+    }
+
+    app.UseHttpsRedirection();
+
+    app.UseAuthorization();
+
+    app.MapControllers();
+
+    app.Run();
 }
-
-app.UseHttpsRedirection();
-
-app.UseAuthorization();
-
-app.MapControllers();
-
-app.Run();
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Web API terminated unexpectedly!");
+}
+finally
+{
+    Log.CloseAndFlush();
+}

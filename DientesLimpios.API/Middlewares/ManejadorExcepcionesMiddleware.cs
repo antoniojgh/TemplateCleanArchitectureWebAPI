@@ -9,9 +9,13 @@ namespace DientesLimpios.API.Middlewares
     {
         private readonly RequestDelegate _next;
 
-        public ManejadorExcepcionesMiddleware(RequestDelegate next)
+        // Define the Logger
+        private readonly ILogger<ManejadorExcepcionesMiddleware> _logger;
+
+        public ManejadorExcepcionesMiddleware(RequestDelegate next, ILogger<ManejadorExcepcionesMiddleware> logger)
         {
             _next = next;
+            _logger = logger;
         }
 
         public async Task Invoke(HttpContext context)
@@ -22,6 +26,10 @@ namespace DientesLimpios.API.Middlewares
             }
             catch (Exception ex)
             {
+                // Log the Error BEFORE handling it
+                // We use LogError for 500s and critical failures
+                _logger.LogError(ex, "Exception processing request {Method} {Path}", context.Request.Method, context.Request.Path);
+
                 await ManejarExcepcion(context, ex);
             }
         }
