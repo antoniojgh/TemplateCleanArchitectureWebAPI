@@ -3,13 +3,15 @@ using MediatR;
 
 namespace DientesLimpios.API.Jobs
 {
-    public class RecordatorioCitasJob(IServiceScopeFactory scopeFactory) : BackgroundService
+    public class RecordatorioCitasJob(IServiceScopeFactory scopeFactory, ILogger<RecordatorioCitasJob> logger) : BackgroundService
     {
         // Zona horaria de República Dominicana (Eastern Standard Time)
         private readonly TimeZoneInfo zonaHorariaRD = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            logger.LogInformation("RecordatorioCitasJob started. Waiting for 8:00 AM EST trigger.");
+
             // Mientras no se solicite la cancelación del token
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -18,9 +20,20 @@ namespace DientesLimpios.API.Jobs
                 // Si son las 8 AM en República Dominicana
                 if (ahora.Hour == 8)
                 {
-                    using var scope = scopeFactory.CreateScope();
-                    var mediador = scope.ServiceProvider.GetRequiredService<IMediator>();
-                    await mediador.Send(new ComandoEnviarRecordatorioCitas());
+                    logger.LogInformation("Triggering daily appointment reminders at {Time}", ahora);
+
+                    try
+                    {
+                        using var scope = scopeFactory.CreateScope();
+                        var mediador = scope.ServiceProvider.GetRequiredService<IMediator>();
+                        await mediador.Send(new ComandoEnviarRecordatorioCitas());
+
+                        logger.LogInformation("Daily reminders command dispatched successfully.");
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(ex, "Failed to execute daily reminders job.");
+                    }
                 }
 
                 // Esperar una hora antes de volver a verificar

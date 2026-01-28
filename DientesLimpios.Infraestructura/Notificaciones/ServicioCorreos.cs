@@ -3,10 +3,11 @@ using System.Net;
 using System.Net.Mail;
 using DientesLimpios.Aplicacion.Interfaces.Notificaciones;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace DientesLimpios.Infraestructura.Notificaciones
 {
-    public class ServicioCorreos(IConfiguration configuration) : IServicioNotificaciones
+    public class ServicioCorreos(IConfiguration configuration, ILogger<ServicioCorreos> logger) : IServicioNotificaciones
     {
         public async Task EnviarConfirmacionCita(ConfirmacionCitaDTO cita)
         {
@@ -46,18 +47,32 @@ namespace DientesLimpios.Infraestructura.Notificaciones
 
         private async Task EnviarMensaje(string emailDestinatario, string asunto, string cuerpo)
         {
-            var nuestroEmail = configuration.GetValue<string>("CONFIGURACIONES_EMAIL:EMAIL");
-            var password = configuration.GetValue<string>("CONFIGURACIONES_EMAIL:PASSWORD");
-            var host = configuration.GetValue<string>("CONFIGURACIONES_EMAIL:HOST");
-            var puerto = configuration.GetValue<int>("CONFIGURACIONES_EMAIL:PUERTO");
+            logger.LogInformation("Preparing to send email to {Recipient}. Subject: {Subject}", emailDestinatario, asunto);
 
-            var smtpCliente = new SmtpClient(host, puerto);
-            smtpCliente.EnableSsl = true;
-            smtpCliente.UseDefaultCredentials = false;
-            smtpCliente.Credentials = new NetworkCredential(nuestroEmail, password);
+            try
+            {
+                var nuestroEmail = configuration.GetValue<string>("CONFIGURACIONES_EMAIL:EMAIL");
+                var password = configuration.GetValue<string>("CONFIGURACIONES_EMAIL:PASSWORD");
+                var host = configuration.GetValue<string>("CONFIGURACIONES_EMAIL:HOST");
+                var puerto = configuration.GetValue<int>("CONFIGURACIONES_EMAIL:PUERTO");
 
-            var mensaje = new MailMessage(nuestroEmail!, emailDestinatario, asunto, cuerpo);
-            await smtpCliente.SendMailAsync(mensaje);
+                var smtpCliente = new SmtpClient(host, puerto);
+                smtpCliente.EnableSsl = true;
+                smtpCliente.UseDefaultCredentials = false;
+                smtpCliente.Credentials = new NetworkCredential(nuestroEmail, password);
+
+                var mensaje = new MailMessage(nuestroEmail!, emailDestinatario, asunto, cuerpo);
+                await smtpCliente.SendMailAsync(mensaje);
+
+                logger.LogInformation("Email sent successfully to {Recipient}", emailDestinatario);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "SMTP Error: Failed to send email to {Recipient}", emailDestinatario);
+
+                // Rethrow so the Application layer knows it failed
+                throw;
+            }
         }
     }
 }

@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using AutoMapper;
-using DientesLimpios.Aplicacion.CasosdeUso.Citas.Consultas.ObtenerDetalleCita;
+﻿using AutoMapper;
 using DientesLimpios.Aplicacion.Excepciones;
 using DientesLimpios.Aplicacion.Interfaces.Notificaciones;
 using DientesLimpios.Aplicacion.Interfaces.Persistencia;
@@ -10,13 +6,16 @@ using DientesLimpios.Aplicacion.Interfaces.Repositorios;
 using DientesLimpios.Dominio.Entidades;
 using DientesLimpios.Dominio.ObjetosDeValor;
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace DientesLimpios.Aplicacion.CasosdeUso.Citas.Comandos.CrearCita
 {
-    public class HandlerCrearCita(IRepositorioCitas repositorio, IUnitOfwork unidadDeTrabajo, IServicioNotificaciones servicioNotificaciones, IMapper mapper) : IRequestHandler<ComandoCrearCita, Guid>
+    public class HandlerCrearCita(IRepositorioCitas repositorio, IUnitOfwork unidadDeTrabajo, IServicioNotificaciones servicioNotificaciones, IMapper mapper, ILogger<HandlerCrearCita> logger) : IRequestHandler<ComandoCrearCita, Guid>
     {
         public async Task<Guid> Handle(ComandoCrearCita request, CancellationToken cancellationToken)
         {
+            logger.LogInformation("Handling CrearCita for Patient {PatientId} with Dentist {DentistId}", request.PacienteId, request.DentistaId);
+
             var citaSeSolapa = await repositorio.ExisteCitaSolapada(request.DentistaId, request.FechaInicio, request.FechaFin);
 
             if (citaSeSolapa)
@@ -34,16 +33,29 @@ namespace DientesLimpios.Aplicacion.CasosdeUso.Citas.Comandos.CrearCita
                 var respuesta = await repositorio.Agregar(cita);
                 await unidadDeTrabajo.Persistir();
                 id = respuesta.Id;
+
+                logger.LogInformation("Cita created successfully with ID: {CitaId}", id);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                logger.LogError(ex, "Database transaction failed for CrearCita");
                 await unidadDeTrabajo.Reversar();
                 throw;
             }
 
-            var citaDB = await repositorio.ObtenerPorId(id.Value);
-            var notificacionDTO = mapper.Map<ConfirmacionCitaDTO>(citaDB);
-            await servicioNotificaciones.EnviarConfirmacionCita(notificacionDTO);
+            try
+            {
+                var citaDB = await repositorio.ObtenerPorId(id.Value);
+                var notificacionDTO = mapper.Map<ConfirmacionCitaDTO>(citaDB);
+                await servicioNotificaciones.EnviarConfirmacionCita(notificacionDTO);
+
+                logger.LogInformation("Confirmation email sent to {Email}", notificacionDTO.Paciente_Email);
+            }
+            catch (Exception ex)
+            {
+                // We log as Warning because the appointment exists, but the email failed.
+                logger.LogWarning(ex, "Appointment {CitaId} created but failed to send confirmation email.", id);
+            }
             return id.Value;
         }
 
