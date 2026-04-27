@@ -12,6 +12,7 @@
     <Project Path="DientesLimpios.Persistencia/DientesLimpios.Persistencia.csproj" />
   </Folder>
   <Folder Name="/Pruebas/">
+    <Project Path="DientesLimpios.ArchitectureTests/DientesLimpios.ArchitectureTests.csproj" Id="e73d9872-5f39-4c57-84f5-6f6795b3f5a6" />
     <Project Path="DientesLimpios.Tests/DientesLimpios.Tests.csproj" />
   </Folder>
 </Solution>
