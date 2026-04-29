@@ -43,7 +43,7 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Consultorios
 
             _repositorio.ObtenerPorId(id).Returns(consultorio);
 
-            await _handler.Handle(comando, CancellationToken.None);
+            await _handler.Handle(comando);
 
             await _repositorio.Received(1).Actualizar(consultorio);
             await _unidadDeTrabajo.Received(1).Persistir();
@@ -56,7 +56,7 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Consultorios
             var comando = new ComandoActualizarConsultorio { Id = Guid.NewGuid(), Nombre = "Nombre" };
             _repositorio.ObtenerPorId(comando.Id).ReturnsNull();
 
-            Func<Task> act = async () => await _handler.Handle(comando, CancellationToken.None);
+            Func<Task> act = async () => await _handler.Handle(comando);
 
             // Assert
             // Verify it throws the specific exception
@@ -73,7 +73,7 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Consultorios
             _repositorio.ObtenerPorId(id).Returns(consultorio);
             _repositorio.Actualizar(consultorio).Throws((new InvalidOperationException("Error al actualizar")));
 
-            Func<Task> act = async () => await _handler.Handle(comando, CancellationToken.None);
+            Func<Task> act = async () => await _handler.Handle(comando);
 
             await act.Should().ThrowAsync<InvalidOperationException>();
             await _unidadDeTrabajo.Received(1).Reversar();

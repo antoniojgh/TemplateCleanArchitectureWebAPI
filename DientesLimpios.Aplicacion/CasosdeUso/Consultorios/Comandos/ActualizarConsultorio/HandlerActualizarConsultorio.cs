@@ -1,16 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using DientesLimpios.Aplicacion.Excepciones;
+﻿using DientesLimpios.Aplicacion.Excepciones;
 using DientesLimpios.Aplicacion.Interfaces.Persistencia;
 using DientesLimpios.Aplicacion.Interfaces.Repositorios;
-using MediatR;
+using DientesLimpios.Aplicacion.Utilidades.Mediador;
 
 namespace DientesLimpios.Aplicacion.CasosdeUso.Consultorios.Comandos.ActualizarConsultorio
 {
     public class HandlerActualizarConsultorio(IRepositorioConsultorios repositorio, IUnitOfwork unidadDeTrabajo) : IRequestHandler<ComandoActualizarConsultorio>
     {
-        public async Task Handle(ComandoActualizarConsultorio request, CancellationToken cancellationToken)
+        public async Task Handle(ComandoActualizarConsultorio request)
         {
             var consultorio = await repositorio.ObtenerPorId(request.Id);
 

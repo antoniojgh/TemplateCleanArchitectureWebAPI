@@ -1,5 +1,5 @@
 ﻿using DientesLimpios.Aplicacion.Interfaces.Repositorios.Modelos;
-using MediatR;
+using DientesLimpios.Aplicacion.Utilidades.Mediador;
 
 namespace DientesLimpios.Aplicacion.CasosdeUso.Citas.Consultas.ObtenerListadoCitas
 {

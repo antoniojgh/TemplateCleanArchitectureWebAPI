@@ -1,4 +1,4 @@
-﻿using MediatR;
+﻿using DientesLimpios.Aplicacion.Utilidades.Mediador;
 
 namespace DientesLimpios.Aplicacion.CasosdeUso.Dentistas.Comandos.ActualizarDentista
 {

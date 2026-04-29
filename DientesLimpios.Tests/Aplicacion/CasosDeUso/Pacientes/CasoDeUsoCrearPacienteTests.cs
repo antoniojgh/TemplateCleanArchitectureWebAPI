@@ -41,7 +41,7 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Pacientes
 
             _repositorio.Agregar(Arg.Any<Paciente>()).Returns(pacienteCreado);
 
-            var idResultado = await _handler.Handle(comando, CancellationToken.None);
+            var idResultado = await _handler.Handle(comando);
 
             idResultado.Should().Be(id);
             await _repositorio.Received(1).Agregar(Arg.Any<Paciente>());
@@ -55,7 +55,7 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Pacientes
             var comando = new ComandoCrearPaciente { Nombre = "Felipe", Email = "felipe@ejemplo.com" };
             _repositorio.Agregar(Arg.Any<Paciente>()).Throws(new InvalidOperationException("Error al insertar"));
 
-            Func<Task> act = async () => await _handler.Handle(comando, CancellationToken.None);
+            Func<Task> act = async () => await _handler.Handle(comando);
 
             // Assert
             // Verify it throws the specific exception

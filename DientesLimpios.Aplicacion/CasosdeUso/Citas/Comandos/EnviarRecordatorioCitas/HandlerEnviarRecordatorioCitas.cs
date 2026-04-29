@@ -2,7 +2,7 @@
 using DientesLimpios.Aplicacion.Interfaces.Repositorios;
 using DientesLimpios.Aplicacion.Interfaces.Repositorios.Modelos;
 using DientesLimpios.Dominio.Enums;
-using MediatR;
+using DientesLimpios.Aplicacion.Utilidades.Mediador;
 
 namespace DientesLimpios.Aplicacion.CasosdeUso.Citas.Comandos.EnviarRecordatorioCitas
 {
@@ -11,7 +11,7 @@ namespace DientesLimpios.Aplicacion.CasosdeUso.Citas.Comandos.EnviarRecordatorio
     {
 
 
-        public async Task Handle(ComandoEnviarRecordatorioCitas request, CancellationToken cancellationToken)
+        public async Task Handle(ComandoEnviarRecordatorioCitas request)
         {
             var mañana = DateTime.UtcNow.Date.AddDays(1);
             var fechaInicio = mañana;

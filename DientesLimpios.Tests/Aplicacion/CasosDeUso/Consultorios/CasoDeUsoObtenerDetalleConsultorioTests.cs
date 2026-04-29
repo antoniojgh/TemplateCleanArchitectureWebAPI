@@ -33,7 +33,7 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Consultorios
             _repositorio.ObtenerPorId(id).Returns(consultorio);
 
             // Prueba
-            var resultado = await _casoDeUso.Handle(consulta, CancellationToken.None);
+            var resultado = await _casoDeUso.Handle(consulta);
 
             // Verificación
             resultado.Should().NotBeNull();
@@ -51,7 +51,7 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Consultorios
 
             // Prueba
             // Act, Invocamoes el handler del caso de uso
-            Func<Task> act = async () => await _casoDeUso.Handle(consulta, CancellationToken.None);
+            Func<Task> act = async () => await _casoDeUso.Handle(consulta);
 
             // Assert
             // Verify it throws the specific validation exception

@@ -1,12 +1,12 @@
 ﻿using DientesLimpios.Aplicacion.Interfaces.Repositorios;
 using DientesLimpios.Aplicacion.Utilidades.Comunes;
-using MediatR;
+using DientesLimpios.Aplicacion.Utilidades.Mediador;
 
 namespace DientesLimpios.Aplicacion.CasosdeUso.Dentistas.Consultas.ObtenerListadoDentistas
 {
     public class HandlerObtenerListadoDentistas(IRepositorioDentistas repositorio) : IRequestHandler<ConsultaObtenerListadoDentistas, PaginadoDTO<DentistaListadoDTO>>
     {
-        public async Task<PaginadoDTO<DentistaListadoDTO>> Handle(ConsultaObtenerListadoDentistas request, CancellationToken cancellationToken)
+        public async Task<PaginadoDTO<DentistaListadoDTO>> Handle(ConsultaObtenerListadoDentistas request)
         {
             var dentistasFiltrado = await repositorio.ObtenerFiltrado(request);
             var totalDentistas = await repositorio.ObtenerCantidadTotalRegistros();

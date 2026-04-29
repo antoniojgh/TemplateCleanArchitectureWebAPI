@@ -44,7 +44,7 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Dentistas
                 RegistrosPorPagina = registrosPorPagina
             };
 
-            var resultado = await _handler.Handle(request, CancellationToken.None);
+            var resultado = await _handler.Handle(request);
 
             resultado.Total.Should().Be(10);
             resultado.Elementos.Count.Should().Be(2);
@@ -73,7 +73,7 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Dentistas
                 RegistrosPorPagina = registrosPorPagina
             };
 
-            var resultado = await _handler.Handle(request, CancellationToken.None);
+            var resultado = await _handler.Handle(request);
 
             resultado.Total.Should().Be(0);
             resultado.Elementos.Should().NotBeNull();

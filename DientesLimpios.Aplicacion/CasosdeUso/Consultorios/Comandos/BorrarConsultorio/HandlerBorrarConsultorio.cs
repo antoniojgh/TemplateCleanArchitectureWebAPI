@@ -1,13 +1,13 @@
 ﻿using DientesLimpios.Aplicacion.Excepciones;
 using DientesLimpios.Aplicacion.Interfaces.Persistencia;
 using DientesLimpios.Aplicacion.Interfaces.Repositorios;
-using MediatR;
+using DientesLimpios.Aplicacion.Utilidades.Mediador;
 
 namespace DientesLimpios.Aplicacion.CasosdeUso.Consultorios.Comandos.BorrarConsultorio
 {
     public class HandlerBorrarConsultorio(IRepositorioConsultorios repositorio, IUnitOfwork unidadDeTrabajo) : IRequestHandler<ComandoBorrarConsultorio>
     {
-        public async Task Handle(ComandoBorrarConsultorio request, CancellationToken cancellationToken)
+        public async Task Handle(ComandoBorrarConsultorio request)
         {
             var consultorio = await repositorio.ObtenerPorId(request.Id);
 

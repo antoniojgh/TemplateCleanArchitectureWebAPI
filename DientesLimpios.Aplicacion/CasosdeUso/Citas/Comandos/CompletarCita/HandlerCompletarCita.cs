@@ -1,14 +1,14 @@
 ﻿using DientesLimpios.Aplicacion.Excepciones;
 using DientesLimpios.Aplicacion.Interfaces.Persistencia;
 using DientesLimpios.Aplicacion.Interfaces.Repositorios;
-using MediatR;
+using DientesLimpios.Aplicacion.Utilidades.Mediador;
 
 namespace DientesLimpios.Aplicacion.CasosdeUso.Citas.Comandos.CompletarCita
 {
     public class CasoDeUsoCompletarCita(IRepositorioCitas repositorio, IUnitOfwork unidadDeTrabajo) : IRequestHandler<ComandoCompletarCita>
     {
 
-        public async Task Handle(ComandoCompletarCita request, CancellationToken cancellationToken)
+        public async Task Handle(ComandoCompletarCita request)
         {
             var cita = await repositorio.ObtenerPorId(request.Id);
 

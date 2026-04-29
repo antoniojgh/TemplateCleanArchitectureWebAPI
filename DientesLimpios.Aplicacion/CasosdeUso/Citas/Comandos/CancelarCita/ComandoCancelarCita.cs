@@ -1,6 +1,6 @@
-﻿using MediatR;
+﻿using DientesLimpios.Aplicacion.Utilidades.Mediador;
 
-namespace DientesLimpios.Aplicacion.CasosdeUso.Citas.Comandos.CompletarCita
+namespace DientesLimpios.Aplicacion.CasosdeUso.Citas.Comandos.CancelarCita
 {
     public class ComandoCancelarCita : IRequest
     {

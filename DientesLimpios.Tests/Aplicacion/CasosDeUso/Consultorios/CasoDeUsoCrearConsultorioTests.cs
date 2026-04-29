@@ -46,7 +46,7 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Consultorios
             _unidadDeTrabajo.Persistir().Returns(Task.CompletedTask);
 
             // Act invocamos el handler del caso de uso
-            var resultado = await _handler.Handle(comando, CancellationToken.None);
+            var resultado = await _handler.Handle(comando);
 
             // Assert
             await _repositorio.Received(1).Agregar(Arg.Any<Consultorio>());
@@ -67,7 +67,7 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Consultorios
             _repositorio.Agregar(Arg.Any<Consultorio>()).Throws(new Exception("Error al crear el consultorio"));
 
             // Act, Invocamoes el handler del caso de uso
-            Func<Task> act = async () => await _handler.Handle(comando, CancellationToken.None);
+            Func<Task> act = async () => await _handler.Handle(comando);
 
             // Assert
             // Verify it throws the specific exception

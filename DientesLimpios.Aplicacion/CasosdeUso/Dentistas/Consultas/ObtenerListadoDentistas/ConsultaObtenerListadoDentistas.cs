@@ -1,5 +1,5 @@
 ﻿using DientesLimpios.Aplicacion.Utilidades.Comunes;
-using MediatR;
+using DientesLimpios.Aplicacion.Utilidades.Mediador;
 
 namespace DientesLimpios.Aplicacion.CasosdeUso.Dentistas.Consultas.ObtenerListadoDentistas
 {

@@ -1,9 +1,10 @@
 ﻿using DientesLimpios.API.DTOs.Citas;
+using DientesLimpios.Aplicacion.CasosdeUso.Citas.Comandos.CancelarCita;
 using DientesLimpios.Aplicacion.CasosdeUso.Citas.Comandos.CompletarCita;
 using DientesLimpios.Aplicacion.CasosdeUso.Citas.Comandos.CrearCita;
 using DientesLimpios.Aplicacion.CasosdeUso.Citas.Consultas.ObtenerDetalleCita;
 using DientesLimpios.Aplicacion.CasosdeUso.Citas.Consultas.ObtenerListadoCitas;
-using MediatR;
+using DientesLimpios.Aplicacion.Utilidades.Mediador;
 using Microsoft.AspNetCore.Mvc;
 using Asp.Versioning;
 

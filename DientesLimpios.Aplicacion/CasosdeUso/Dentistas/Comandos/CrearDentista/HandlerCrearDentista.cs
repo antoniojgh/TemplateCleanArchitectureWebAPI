@@ -3,13 +3,13 @@ using DientesLimpios.Aplicacion.Interfaces.Persistencia;
 using DientesLimpios.Aplicacion.Interfaces.Repositorios;
 using DientesLimpios.Dominio.Entidades;
 using DientesLimpios.Dominio.ObjetosDeValor;
-using MediatR;
+using DientesLimpios.Aplicacion.Utilidades.Mediador;
 
 namespace DientesLimpios.Aplicacion.CasosdeUso.Dentistas.Comandos.CrearDentista
 {
     public class HandlerCrearDentista(IRepositorioDentistas repositorio, IUnitOfwork unidadDeTrabajo) : IRequestHandler<ComandoCrearDentista, Guid>
     {
-        public async Task<Guid> Handle(ComandoCrearDentista request, CancellationToken cancellationToken)
+        public async Task<Guid> Handle(ComandoCrearDentista request)
         {
             var email = new Email(request.Email);
             var dentista = new Dentista(request.Nombre, email);

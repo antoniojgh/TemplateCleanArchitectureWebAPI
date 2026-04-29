@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using DientesLimpios.Aplicacion.CasosdeUso.Consultorios.Comandos.ActualizarConsultorio;
-using DientesLimpios.Aplicacion.CasosdeUso.Consultorios.Comandos.BorrarConsultorio;
-using DientesLimpios.Aplicacion.CasosdeUso.Consultorios.Comandos.CrearConsultorio;
+﻿using DientesLimpios.Aplicacion.CasosdeUso.Consultorios.Comandos.BorrarConsultorio;
 using DientesLimpios.Aplicacion.Excepciones;
 using DientesLimpios.Aplicacion.Interfaces.Persistencia;
 using DientesLimpios.Aplicacion.Interfaces.Repositorios;
@@ -43,7 +38,7 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Consultorios
 
             _repositorio.ObtenerPorId(id).Returns(consultorio);
 
-            await _handler.Handle(comando, CancellationToken.None);
+            await _handler.Handle(comando);
 
             await _repositorio.Received(1).Borrar(consultorio);
             await _unidadDeTrabajo.Received(1).Persistir();
@@ -56,7 +51,7 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Consultorios
             var comando = new ComandoBorrarConsultorio { Id = Guid.NewGuid() };
             _repositorio.ObtenerPorId(comando.Id).ReturnsNull();
 
-            Func<Task> act = async () => await _handler.Handle(comando, CancellationToken.None);
+            Func<Task> act = async () => await _handler.Handle(comando);
 
             // Assert
             // Verify it throws the specific exception
@@ -74,7 +69,7 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Consultorios
 
             _repositorio.Borrar(consultorio).Throws((new InvalidOperationException("Fallo al borrar")));
 
-            Func<Task> act = async () => await _handler.Handle(comando, CancellationToken.None);
+            Func<Task> act = async () => await _handler.Handle(comando);
 
             await act.Should().ThrowAsync<InvalidOperationException>();
             await _unidadDeTrabajo.Received(1).Reversar();

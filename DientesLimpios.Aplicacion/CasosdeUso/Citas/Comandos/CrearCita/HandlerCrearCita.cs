@@ -4,14 +4,14 @@ using DientesLimpios.Aplicacion.Interfaces.Persistencia;
 using DientesLimpios.Aplicacion.Interfaces.Repositorios;
 using DientesLimpios.Dominio.Entidades;
 using DientesLimpios.Dominio.ObjetosDeValor;
-using MediatR;
+using DientesLimpios.Aplicacion.Utilidades.Mediador;
 using Microsoft.Extensions.Logging;
 
 namespace DientesLimpios.Aplicacion.CasosdeUso.Citas.Comandos.CrearCita
 {
     public class HandlerCrearCita(IRepositorioCitas repositorio, IUnitOfwork unidadDeTrabajo, IServicioNotificaciones servicioNotificaciones, ILogger<HandlerCrearCita> logger) : IRequestHandler<ComandoCrearCita, Guid>
     {
-        public async Task<Guid> Handle(ComandoCrearCita request, CancellationToken cancellationToken)
+        public async Task<Guid> Handle(ComandoCrearCita request)
         {
             logger.LogInformation("Handling CrearCita for Patient {PatientId} with Dentist {DentistId}", request.PacienteId, request.DentistaId);
 

@@ -32,7 +32,7 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Consultorios
 
             var esperado = consultorios.Select(consultorio => consultorio.ADto()).ToList();
 
-            var resultado = await _casoDeUso.Handle(new ConsultaObtenerListadoConsultorios(), CancellationToken.None);
+            var resultado = await _casoDeUso.Handle(new ConsultaObtenerListadoConsultorios());
 
 
             // Verificación:
@@ -51,7 +51,7 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Consultorios
         {
             _repositorio.ObtenerTodos().Returns(new List<Consultorio>());
 
-            var resultado = await _casoDeUso.Handle(new ConsultaObtenerListadoConsultorios(), CancellationToken.None);
+            var resultado = await _casoDeUso.Handle(new ConsultaObtenerListadoConsultorios());
 
             resultado.Should().NotBeNull();
             resultado.Count.Should().Be(0);

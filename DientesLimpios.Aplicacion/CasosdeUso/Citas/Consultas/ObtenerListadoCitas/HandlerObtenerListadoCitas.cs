@@ -1,11 +1,11 @@
 ﻿using DientesLimpios.Aplicacion.Interfaces.Repositorios;
-using MediatR;
+using DientesLimpios.Aplicacion.Utilidades.Mediador;
 
 namespace DientesLimpios.Aplicacion.CasosdeUso.Citas.Consultas.ObtenerListadoCitas
 {
     public class HandlerObtenerListadoCitas(IRepositorioCitas repositorio) : IRequestHandler<ConsultaObtenerListadoCitas, List<CitaListadoDTO>>
     {
-        public async Task<List<CitaListadoDTO>> Handle(ConsultaObtenerListadoCitas request, CancellationToken cancellationToken)
+        public async Task<List<CitaListadoDTO>> Handle(ConsultaObtenerListadoCitas request)
         {
             var citas = await repositorio.ObtenerFiltrado(request);
 

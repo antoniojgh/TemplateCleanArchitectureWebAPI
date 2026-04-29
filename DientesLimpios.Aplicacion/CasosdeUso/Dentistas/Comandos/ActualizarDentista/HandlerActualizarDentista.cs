@@ -2,13 +2,13 @@
 using DientesLimpios.Aplicacion.Interfaces.Persistencia;
 using DientesLimpios.Aplicacion.Interfaces.Repositorios;
 using DientesLimpios.Dominio.ObjetosDeValor;
-using MediatR;
+using DientesLimpios.Aplicacion.Utilidades.Mediador;
 
 namespace DientesLimpios.Aplicacion.CasosdeUso.Dentistas.Comandos.ActualizarDentista
 {
     public class HandlerActualizarDentista(IRepositorioDentistas repositorio, IUnitOfwork unidadDeTrabajo) : IRequestHandler<ComandoActualizarDentista>
     {
-        public async Task Handle(ComandoActualizarDentista request, CancellationToken cancellationToken)
+        public async Task Handle(ComandoActualizarDentista request)
         {
             var dentista = await repositorio.ObtenerPorId(request.Id);
 

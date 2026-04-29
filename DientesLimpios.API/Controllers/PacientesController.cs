@@ -6,7 +6,7 @@ using DientesLimpios.Aplicacion.CasosdeUso.Pacientes.Comandos.BorrarPaciente;
 using DientesLimpios.Aplicacion.CasosdeUso.Pacientes.Comandos.CrearPaciente;
 using DientesLimpios.Aplicacion.CasosdeUso.Pacientes.Consultas.ObtenerDetallePaciente;
 using DientesLimpios.Aplicacion.CasosdeUso.Pacientes.Consultas.ObtenerListadoPacientes;
-using MediatR;
+using DientesLimpios.Aplicacion.Utilidades.Mediador;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DientesLimpios.API.Controllers

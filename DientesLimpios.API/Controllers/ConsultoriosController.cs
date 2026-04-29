@@ -5,7 +5,7 @@ using DientesLimpios.Aplicacion.CasosdeUso.Consultorios.Comandos.BorrarConsultor
 using DientesLimpios.Aplicacion.CasosdeUso.Consultorios.Comandos.CrearConsultorio;
 using DientesLimpios.Aplicacion.CasosdeUso.Consultorios.Consultas.ObtenerDetalleConsultorio;
 using DientesLimpios.Aplicacion.CasosdeUso.Consultorios.Consultas.ObtenerListadoConsultorios;
-using MediatR;
+using DientesLimpios.Aplicacion.Utilidades.Mediador;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DientesLimpios.API.Controllers
