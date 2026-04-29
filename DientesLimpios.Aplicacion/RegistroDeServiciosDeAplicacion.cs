@@ -1,4 +1,5 @@
 ﻿using DientesLimpios.Aplicacion.Utilidades.Mediador;
+using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DientesLimpios.Aplicacion
@@ -9,6 +10,9 @@ namespace DientesLimpios.Aplicacion
                     this IServiceCollection services)
         {
             services.AddTransient<IMediator, MediadorSimple>();
+
+            // Registers all AbstractValidator<T> from the assembly
+            services.AddValidatorsFromAssembly(typeof(IMediator).Assembly);
 
             services.Scan(scan =>
             scan.FromAssembliesOf(typeof(IMediator))

@@ -57,23 +57,15 @@ namespace DientesLimpios.Aplicacion.Utilidades.Mediador
         {
             var tipoValidador = typeof(IValidator<>).MakeGenericType(request.GetType());
 
-            var validador = serviceProvider.GetService(tipoValidador);
+            var validador = (IValidator?)serviceProvider.GetService(tipoValidador);
 
             if (validador is not null)
             {
-                var metodoValidar = tipoValidador.GetMethod("ValidateAsync");
-                var tareaValidar = (Task)metodoValidar!.Invoke(validador,
-                        new object[] { request, CancellationToken.None })!;
-
-                await tareaValidar.ConfigureAwait(false);
-
-                var resultado = tareaValidar.GetType().GetProperty("Result");
-                var validationResult = (ValidationResult)resultado!.GetValue(tareaValidar)!;
+                var contexto = new ValidationContext<object>(request);
+                var validationResult = await validador.ValidateAsync(contexto);
 
                 if (!validationResult.IsValid)
-                {
                     throw new ExcepcionDeValidacion(validationResult);
-                }
             }
         }
     }
