@@ -1,8 +1,6 @@
-﻿using AutoMapper;
+﻿
 using DientesLimpios.Aplicacion.CasosdeUso.Dentistas.Consultas.ObtenerListadoDentistas;
-using DientesLimpios.Aplicacion.CasosdeUso.Pacientes.Consultas.ObtenerListadoPacientes;
 using DientesLimpios.Aplicacion.Interfaces.Repositorios;
-using DientesLimpios.Aplicacion.Mappings;
 using DientesLimpios.Dominio.Entidades;
 using DientesLimpios.Dominio.ObjetosDeValor;
 using FluentAssertions;
@@ -14,23 +12,12 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Dentistas
     {
         private readonly IRepositorioDentistas _repositorio;
         private readonly HandlerObtenerListadoDentistas _handler;
-        // Use real IMapper, not a Mock
-        private readonly IMapper _mapper;
 
         public CasoDeUsoObtenerListadoDentistasTests()
         {
             _repositorio = Substitute.For<IRepositorioDentistas>();
 
-            // Create a REAL Mapper Configuration
-            var config = new MapperConfiguration(cfg =>
-            {
-                // Load your actual profile
-                cfg.AddProfile<MappingProfile>();
-            });
-            // Create the real mapper instance
-            _mapper = config.CreateMapper();
-
-            _handler = new HandlerObtenerListadoDentistas(_repositorio, _mapper);
+            _handler = new HandlerObtenerListadoDentistas(_repositorio);
 
         }
 

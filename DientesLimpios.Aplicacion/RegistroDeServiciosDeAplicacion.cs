@@ -1,12 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using DientesLimpios.Aplicacion.Behaviors;
+﻿using DientesLimpios.Aplicacion.Behaviors;
 using DientesLimpios.Aplicacion.CasosdeUso.Consultorios.Comandos.CrearConsultorio;
-using DientesLimpios.Aplicacion.CasosdeUso.Consultorios.Consultas.ObtenerDetalleConsultorio;
-using DientesLimpios.Aplicacion.Mappings;
 using FluentValidation;
-using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DientesLimpios.Aplicacion
@@ -28,10 +22,6 @@ namespace DientesLimpios.Aplicacion
 
             // Register all FluentValidation validators from the assembly
             services.AddValidatorsFromAssembly(typeof(ValidadorComandoCrearConsultorio).Assembly);
-
-            // "typeof(HandlerCrearConsultorio)" can be ANY class in your Application project
-            // It serves as a marker so AutoMapper knows which assembly to scan.
-            services.AddAutoMapper(typeof(MappingProfile).Assembly);
 
             return services;
 

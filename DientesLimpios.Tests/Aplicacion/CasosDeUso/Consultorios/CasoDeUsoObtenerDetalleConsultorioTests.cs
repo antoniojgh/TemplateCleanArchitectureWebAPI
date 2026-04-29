@@ -1,9 +1,6 @@
-﻿using System.Reflection.Metadata;
-using AutoMapper;
-using DientesLimpios.Aplicacion.CasosdeUso.Consultorios.Consultas.ObtenerDetalleConsultorio;
+﻿using DientesLimpios.Aplicacion.CasosdeUso.Consultorios.Consultas.ObtenerDetalleConsultorio;
 using DientesLimpios.Aplicacion.Excepciones;
 using DientesLimpios.Aplicacion.Interfaces.Repositorios;
-using DientesLimpios.Aplicacion.Mappings;
 using DientesLimpios.Dominio.Entidades;
 using FluentAssertions;
 using NSubstitute;
@@ -15,24 +12,13 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Consultorios
     {
         private readonly IRepositorioConsultorios _repositorio;
         private readonly HandlerObtenerDetalleConsultorio _casoDeUso;
-        // Use real IMapper, not a Mock
-        private readonly IMapper _mapper;
 
 
         public CasoDeUsoObtenerDetalleConsultorioTests()
         {
             _repositorio = Substitute.For<IRepositorioConsultorios>();
 
-            // Create a REAL Mapper Configuration
-            var config = new MapperConfiguration(cfg =>
-            {
-                // Load your actual profile
-                cfg.AddProfile<MappingProfile>(); 
-            });
-            // Create the real mapper instance
-            _mapper = config.CreateMapper(); 
-
-            _casoDeUso = new HandlerObtenerDetalleConsultorio(_repositorio, _mapper);
+            _casoDeUso = new HandlerObtenerDetalleConsultorio(_repositorio);
         }
 
 

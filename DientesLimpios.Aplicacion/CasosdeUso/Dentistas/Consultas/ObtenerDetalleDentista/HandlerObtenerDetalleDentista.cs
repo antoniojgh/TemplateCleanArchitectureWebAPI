@@ -1,11 +1,10 @@
-﻿using AutoMapper;
-using DientesLimpios.Aplicacion.Excepciones;
+﻿using DientesLimpios.Aplicacion.Excepciones;
 using DientesLimpios.Aplicacion.Interfaces.Repositorios;
 using MediatR;
 
 namespace DientesLimpios.Aplicacion.CasosdeUso.Dentistas.Consultas.ObtenerDetalleDentista
 {
-    public class HandlerObtenerDetalleDentista(IRepositorioDentistas repositorio, IMapper mapper) : IRequestHandler<ConsultaObtenerDetalleDentista, DentistaDetalleDTO>
+    public class HandlerObtenerDetalleDentista(IRepositorioDentistas repositorio) : IRequestHandler<ConsultaObtenerDetalleDentista, DentistaDetalleDTO>
     {
         public async Task<DentistaDetalleDTO> Handle(ConsultaObtenerDetalleDentista request, CancellationToken cancellationToken)
         {
@@ -16,7 +15,7 @@ namespace DientesLimpios.Aplicacion.CasosdeUso.Dentistas.Consultas.ObtenerDetall
                 throw new ExcepcionNoEncontrado();
             }
 
-            var dentistaDetalleDTO = mapper.Map<DentistaDetalleDTO>(dentista);
+            var dentistaDetalleDTO = dentista.ADto();
 
             return dentistaDetalleDTO;
         }

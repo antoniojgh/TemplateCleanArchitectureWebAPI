@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using AutoMapper;
-using DientesLimpios.Aplicacion.Interfaces.Notificaciones;
+﻿using DientesLimpios.Aplicacion.Interfaces.Notificaciones;
 using DientesLimpios.Aplicacion.Interfaces.Repositorios;
 using DientesLimpios.Aplicacion.Interfaces.Repositorios.Modelos;
 using DientesLimpios.Dominio.Enums;
@@ -11,7 +7,7 @@ using MediatR;
 namespace DientesLimpios.Aplicacion.CasosdeUso.Citas.Comandos.EnviarRecordatorioCitas
 {
     public class HandlerEnviarRecordatorioCitas(IRepositorioCitas repositorio,
-                IServicioNotificaciones servicioNotificaciones, IMapper mapper) : IRequestHandler<ComandoEnviarRecordatorioCitas>
+                IServicioNotificaciones servicioNotificaciones) : IRequestHandler<ComandoEnviarRecordatorioCitas>
     {
 
 
@@ -32,7 +28,7 @@ namespace DientesLimpios.Aplicacion.CasosdeUso.Citas.Comandos.EnviarRecordatorio
 
             foreach (var cita in citas)
             {
-                var citaDTO = mapper.Map<RecordatorioCitaDTO>(cita);
+                var citaDTO = cita.ADto();
                 await servicioNotificaciones.EnviarRecordatorioCita(citaDTO);
             }
 

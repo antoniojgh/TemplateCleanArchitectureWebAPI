@@ -1,7 +1,5 @@
-﻿using AutoMapper;
-using DientesLimpios.Aplicacion.CasosdeUso.Consultorios.Consultas.ObtenerListadoConsultorios;
+﻿using DientesLimpios.Aplicacion.CasosdeUso.Consultorios.Consultas.ObtenerListadoConsultorios;
 using DientesLimpios.Aplicacion.Interfaces.Repositorios;
-using DientesLimpios.Aplicacion.Mappings;
 using DientesLimpios.Dominio.Entidades;
 using FluentAssertions;
 using NSubstitute;
@@ -12,24 +10,12 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Consultorios
     {
         private readonly IRepositorioConsultorios _repositorio;
         private readonly HandlerObtenerListadoConsultorios _casoDeUso;
-        // Use real IMapper, not a Mock
-        private readonly IMapper _mapper;
-
 
         public CasoDeUsoObtenerListadoConsultoriosTests()
         {
             _repositorio = Substitute.For<IRepositorioConsultorios>();
 
-            // Create a REAL Mapper Configuration
-            var config = new MapperConfiguration(cfg =>
-            {
-                // Load your actual profile
-                cfg.AddProfile<MappingProfile>();
-            });
-            // Create the real mapper instance
-            _mapper = config.CreateMapper();
-
-            _casoDeUso = new HandlerObtenerListadoConsultorios(_repositorio, _mapper);
+            _casoDeUso = new HandlerObtenerListadoConsultorios(_repositorio);
         }
 
 
@@ -44,7 +30,7 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Consultorios
 
             _repositorio.ObtenerTodos().Returns(consultorios);
 
-            var esperado = _mapper.Map<List<ConsultorioListadoDTO>>(consultorios);
+            var esperado = consultorios.Select(consultorio => consultorio.ADto()).ToList();
 
             var resultado = await _casoDeUso.Handle(new ConsultaObtenerListadoConsultorios(), CancellationToken.None);
 

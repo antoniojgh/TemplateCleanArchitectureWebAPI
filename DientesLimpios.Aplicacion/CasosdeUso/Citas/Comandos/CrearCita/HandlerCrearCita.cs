@@ -1,5 +1,4 @@
-﻿using AutoMapper;
-using DientesLimpios.Aplicacion.Excepciones;
+﻿using DientesLimpios.Aplicacion.Excepciones;
 using DientesLimpios.Aplicacion.Interfaces.Notificaciones;
 using DientesLimpios.Aplicacion.Interfaces.Persistencia;
 using DientesLimpios.Aplicacion.Interfaces.Repositorios;
@@ -10,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace DientesLimpios.Aplicacion.CasosdeUso.Citas.Comandos.CrearCita
 {
-    public class HandlerCrearCita(IRepositorioCitas repositorio, IUnitOfwork unidadDeTrabajo, IServicioNotificaciones servicioNotificaciones, IMapper mapper, ILogger<HandlerCrearCita> logger) : IRequestHandler<ComandoCrearCita, Guid>
+    public class HandlerCrearCita(IRepositorioCitas repositorio, IUnitOfwork unidadDeTrabajo, IServicioNotificaciones servicioNotificaciones, ILogger<HandlerCrearCita> logger) : IRequestHandler<ComandoCrearCita, Guid>
     {
         public async Task<Guid> Handle(ComandoCrearCita request, CancellationToken cancellationToken)
         {
@@ -46,7 +45,7 @@ namespace DientesLimpios.Aplicacion.CasosdeUso.Citas.Comandos.CrearCita
             try
             {
                 var citaDB = await repositorio.ObtenerPorId(id.Value);
-                var notificacionDTO = mapper.Map<ConfirmacionCitaDTO>(citaDB);
+                var notificacionDTO = citaDB!.ADto();
                 await servicioNotificaciones.EnviarConfirmacionCita(notificacionDTO);
 
                 logger.LogInformation("Confirmation email sent to {Email}", notificacionDTO.Paciente_Email);
