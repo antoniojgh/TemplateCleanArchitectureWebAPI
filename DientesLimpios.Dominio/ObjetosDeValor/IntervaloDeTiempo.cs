@@ -1,4 +1,6 @@
-﻿using DientesLimpios.Dominio.Excepciones;
+﻿using DientesLimpios.Dominio.Comunes.PatronResultados;
+using DientesLimpios.Dominio.Errores;
+using DientesLimpios.Dominio.Excepciones;
 
 namespace DientesLimpios.Dominio.ObjetosDeValor
 {
@@ -7,20 +9,22 @@ namespace DientesLimpios.Dominio.ObjetosDeValor
         public DateTime Inicio { get; }
         public DateTime Fin { get; }
 
-        private IntervaloDeTiempo()
+        private IntervaloDeTiempo() { }   // EF Core
+
+        private IntervaloDeTiempo(DateTime inicio, DateTime fin)
         {
-
-        }
-
-        public IntervaloDeTiempo(DateTime inicio, DateTime fin)
-        {
-            if (inicio >= fin)
-            {
-                throw new ExcepcionDeReglaDeNegocio("La hora de inicio debe ser anterior a la hora de fin.");
-            }
-
             Inicio = inicio;
             Fin = fin;
         }
+
+        public static Result<IntervaloDeTiempo> Crear(DateTime inicio, DateTime fin)
+        {
+            if (inicio >= fin)
+                return Result.Failure<IntervaloDeTiempo>(
+                    DomainErrors.IntervaloDeTiempo.InicioMayorOIgualAFin);
+
+            return Result.Success(new IntervaloDeTiempo(inicio, fin));
+        }
     }
+
 }

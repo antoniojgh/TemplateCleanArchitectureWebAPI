@@ -1,45 +1,59 @@
-﻿using DientesLimpios.Dominio.Excepciones;
-using DientesLimpios.Dominio.ObjetosDeValor; // Ensure you have the reference to your Domain
+﻿using DientesLimpios.Dominio.Errores;
+using DientesLimpios.Dominio.ObjetosDeValor;
 using FluentAssertions;
-using Xunit; // xUnit namespace
 
 namespace DientesLimpios.Tests.Dominio.ObjetosDeValor
 {
     public class EmailTests
     {
-        // 1. Testing Null -> Expecting Exception
-        [Fact] 
-        public void Constructor_EmailNulo_LanzaExcepcion()
-        {
-            // Arrange
-            // We define the action that causes the error
-            Action act = () => new Email(null!);
-
-            // Act & Assert
-            // FluentAssertions makes this readable
-            act.Should().Throw<ExcepcionDeReglaDeNegocio>();
-        }
-
-        // 2. Testing Invalid Format -> Expecting Exception
-        [Fact]
-        public void Constructor_EmailSinArroba_LanzaExcepcion()
-        {
-            // Arrange
-            Action act = () => new Email("felipe.com");
-
-            // Act & Assert
-            act.Should().Throw<ExcepcionDeReglaDeNegocio>();
-        }
-
-        // 3. Testing Valid Case
-        [Fact]
-        public void Constructor_EmailValido_NoLanzaExcepcion()
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        public void Crear_EmailInvalido_RetornaFailureEmailVacio(string? email)
         {
             // Act
-            var email = new Email("felipe@ejemplo.com");
+            var result = Email.Crear(email!);
 
             // Assert
-            email.Should().NotBeNull();
+            result.IsFailure.Should().BeTrue();
+            result.Error.Should().Be(DomainErrors.Email.Vacio);
+        }
+
+        [Theory]
+        [InlineData("EmailInvalido")]      // no @
+        [InlineData("sin-arroba.com")]     // no @
+        public void Crear_EmailSinArroba_RetornaFailureFormatoInvalido(string email)
+        {
+            var result = Email.Crear(email);
+
+            result.IsFailure.Should().BeTrue();
+            result.Error.Should().Be(DomainErrors.Email.FormatoInvalido);
+        }
+
+        [Theory]
+        [InlineData("@")]
+        [InlineData("a@")]
+        [InlineData("@b")]
+        public void Crear_EmailDegenerado_RetornaSuccess_LimitacionConocida(string email)
+        {
+            // The current implementation only checks for '@' presence,
+            // not full RFC 5321 validity. These pass — by design, for now.
+            var result = Email.Crear(email);
+
+            result.IsSuccess.Should().BeTrue();
+        }
+
+        [Fact]
+        public void Crear_EmailValido_CreaInstanciaCorrecta()
+        {
+            // Act
+            var result = Email.Crear("felipe@ejemplo.com");
+
+            // Assert
+            result.IsSuccess.Should().BeTrue();
+
+            var email = result.Value;
             email.Valor.Should().Be("felipe@ejemplo.com");
         }
     }

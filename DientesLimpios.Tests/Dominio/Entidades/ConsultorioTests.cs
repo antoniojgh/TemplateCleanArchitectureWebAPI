@@ -1,33 +1,37 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using DientesLimpios.Dominio.Entidades;
-using DientesLimpios.Dominio.Excepciones;
-using DientesLimpios.Dominio.ObjetosDeValor;
+﻿using DientesLimpios.Dominio.Entidades;
+using DientesLimpios.Dominio.Errores;
 using FluentAssertions;
 
 namespace DientesLimpios.Tests.Dominio.Entidades
 {
     public class ConsultorioTests
     {
-        [Fact]
-        public void Constructor_NombreNulo_LanzaExcepcion()
-        {
-            // Arrange
-            Action act = () => new Consultorio(null!);
 
-            // Act & Assert
-            act.Should().Throw<ExcepcionDeReglaDeNegocio>();
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        public void Crear_NombreInvalido_RetornaFailureNombreObligatorio(string? nombre)
+        {
+            // Act
+            var result = Consultorio.Crear(nombre!);
+
+            // Assert
+            result.IsFailure.Should().BeTrue();
+            result.Error.Should().Be(DomainErrors.Consultorio.NombreObligatorio);
         }
 
         [Fact]
-        public void Constructor_NombreValido_CreaInstanciaCorrecta()
+        public void Crear_NombreValido_CreaInstanciaCorrecta()
         {
             // Act
-            var consultorio = new Consultorio("Consultorio Central");
+            var result = Consultorio.Crear("Consultorio Central");
 
             // Assert
-            consultorio.Should().NotBeNull();
+            result.IsSuccess.Should().BeTrue();
+
+            var consultorio = result.Value;
+
             consultorio.Nombre.Should().Be("Consultorio Central");
             consultorio.Id.Should().NotBeEmpty();
         }

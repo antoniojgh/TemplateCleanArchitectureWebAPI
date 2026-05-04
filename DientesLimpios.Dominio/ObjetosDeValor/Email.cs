@@ -1,4 +1,5 @@
-﻿using DientesLimpios.Dominio.Excepciones;
+﻿using DientesLimpios.Dominio.Comunes.PatronResultados;
+using DientesLimpios.Dominio.Errores;
 
 namespace DientesLimpios.Dominio.ObjetosDeValor
 {
@@ -6,24 +7,20 @@ namespace DientesLimpios.Dominio.ObjetosDeValor
     {
         public string Valor { get; } = null!;
 
-        private Email()
+        private Email() { }   // EF Core
+
+        private Email(string valor) => Valor = valor;
+
+        public static Result<Email> Crear(string valor)
         {
+            if (string.IsNullOrWhiteSpace(valor))
+                return Result.Failure<Email>(DomainErrors.Email.Vacio);
 
-        }
+            if (!valor.Contains('@', StringComparison.Ordinal))
+                return Result.Failure<Email>(DomainErrors.Email.FormatoInvalido);
 
-        public Email(string email)
-        {
-            if (string.IsNullOrWhiteSpace(email))
-            {
-                throw new ExcepcionDeReglaDeNegocio($"El {nameof(email)} es obligatorio");
-            }
-
-            if (!email.Contains("@"))
-            {
-                throw new ExcepcionDeReglaDeNegocio($"El {nameof(email)} no es válido");
-            }
-
-            Valor = email;
+            return Result.Success(new Email(valor));
         }
     }
+
 }

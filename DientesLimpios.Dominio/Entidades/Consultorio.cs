@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Text;
 using DientesLimpios.Dominio.Comunes;
+using DientesLimpios.Dominio.Comunes.PatronResultados;
+using DientesLimpios.Dominio.Errores;
 using DientesLimpios.Dominio.Excepciones;
 
 namespace DientesLimpios.Dominio.Entidades
@@ -11,29 +13,30 @@ namespace DientesLimpios.Dominio.Entidades
         public Guid Id { get; private set; }
         public string Nombre { get; private set; } = null!;
 
-        private Consultorio() { }
+        private Consultorio() { }   // EF Core
 
-        public Consultorio(string nombre)
+        private Consultorio(string nombre)
         {
-            AplicarReglasDeNegocioNombre(nombre);
-
-            Nombre = nombre;
             Id = Guid.CreateVersion7();
-        }
-
-        public void ActualizarNombre(string nombre)
-        {
-            AplicarReglasDeNegocioNombre(nombre);
-
             Nombre = nombre;
         }
 
-        private void AplicarReglasDeNegocioNombre(string nombre)
+        public static Result<Consultorio> Crear(string nombre)
         {
             if (string.IsNullOrWhiteSpace(nombre))
-            {
-                throw new ExcepcionDeReglaDeNegocio($"El {nameof(nombre)} es obligatorio");
-            }
+                return Result.Failure<Consultorio>(DomainErrors.Consultorio.NombreObligatorio);
+
+            return Result.Success(new Consultorio(nombre));
         }
+
+        public Result ActualizarNombre(string nombre)
+        {
+            if (string.IsNullOrWhiteSpace(nombre))
+                return Result.Failure(DomainErrors.Consultorio.NombreObligatorio);
+
+            Nombre = nombre;
+            return Result.Success();
+        }
+
     }
 }

@@ -1,32 +1,64 @@
 ﻿using DientesLimpios.Dominio.Entidades;
-using DientesLimpios.Dominio.Excepciones;
-using DientesLimpios.Dominio.ObjetosDeValor;
+using DientesLimpios.Dominio.Errores;
 using FluentAssertions;
 
 namespace DientesLimpios.Tests.Dominio.Entidades
 {
     public class PacienteTests
     {
-        [Fact]
-        public void Constructor_NombreNulo_LanzaExcepcion()
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        public void Crear_NombreInvalido_RetornaFailureNombreObligatorio(string? nombre)
         {
-            // Arrange
-            var email = new Email("felipe@ejemplo.com");
-            Action act = () => new Paciente(null!, email);
+            // Act
+            var result = Paciente.Crear(nombre!, "felipe@ejemplo.com");
 
-            // Act & Assert
-            act.Should().Throw<ExcepcionDeReglaDeNegocio>();
+            // Assert
+            result.IsFailure.Should().BeTrue();
+            result.Error.Should().Be(DomainErrors.Paciente.NombreObligatorio);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        public void Crear_EmailInvalido_RetornaFailureEmailVacio(string? email)
+        {
+            // Act
+            var result = Paciente.Crear("Felipe", email!);
+
+            // Assert
+            result.IsFailure.Should().BeTrue();
+            result.Error.Should().Be(DomainErrors.Email.Vacio);
         }
 
         [Fact]
-        public void Constructor_EmailNulo_LanzaExcepcion()
+        public void Crear_EmailFormatoInvalido_RetornaFailureFormatoInvalido()
         {
-            // Arrange
-            Email email = null!;
-            Action act = () => new Paciente("Felipe", email);
+            // Act
+            var result = Paciente.Crear("Felipe", "EmailInvalido");
 
-            // Act & Assert
-            act.Should().Throw<ExcepcionDeReglaDeNegocio>();
+            // Assert
+            result.IsFailure.Should().BeTrue();
+            result.Error.Should().Be(DomainErrors.Email.FormatoInvalido);
+        }
+
+        [Fact]
+        public void Crear_PacienteValido_CreaInstanciaCorrecta()
+        {
+            // Act
+            var result = Paciente.Crear("Felipe", "felipe@ejemplo.com");
+
+            // Assert
+            result.IsSuccess.Should().BeTrue();
+
+            var paciente = result.Value;
+
+            paciente.Nombre.Should().Be("Felipe");
+            paciente.Email.Valor.Should().Be("felipe@ejemplo.com");
+            paciente.Id.Should().NotBeEmpty();
         }
     }
 }

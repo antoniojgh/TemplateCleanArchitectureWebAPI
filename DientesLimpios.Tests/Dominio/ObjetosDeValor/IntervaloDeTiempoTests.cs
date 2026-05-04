@@ -1,4 +1,4 @@
-﻿using DientesLimpios.Dominio.Excepciones;
+﻿using DientesLimpios.Dominio.Errores;
 using DientesLimpios.Dominio.ObjetosDeValor;
 using FluentAssertions;
 
@@ -7,25 +7,47 @@ namespace DientesLimpios.Tests.Dominio.ObjetosDeValor
     public class IntervaloDeTiempoTests
     {
         [Fact]
-        public void Constructor_FechaInicioPosteriorAFechaFin_LanzaExcepcion()
+        public void Crear_FechaInicioPosteriorAFin_RetornaFailureInicioMayorOIgualAFin()
         {
-            // Arrange
-            // We define the action that causes the error
-            Action act = () => new IntervaloDeTiempo(DateTime.UtcNow, DateTime.UtcNow.AddDays(-1));
+            var ahora = DateTime.UtcNow;
 
-            // Act & Assert
-            // FluentAssertions makes this readable
-            act.Should().Throw<ExcepcionDeReglaDeNegocio>();
+            // Act
+            var result = IntervaloDeTiempo.Crear(ahora, ahora.AddDays(-1));
+
+            // Assert
+            result.IsFailure.Should().BeTrue();
+            result.Error.Should().Be(DomainErrors.IntervaloDeTiempo.InicioMayorOIgualAFin);
         }
 
         [Fact]
-        public void Constructor_ParametrosCorrectos_NoLanzaExcepcion()
+        public void Crear_FechaInicioIgualAFin_RetornaFailureInicioMayorOIgualAFin()
         {
+            var ahora = DateTime.UtcNow;
+
             // Act
-            var intervaloTiempo = new IntervaloDeTiempo(DateTime.UtcNow, DateTime.UtcNow.AddMinutes(30));
+            var result = IntervaloDeTiempo.Crear(ahora, ahora);
 
             // Assert
-            intervaloTiempo.Should().NotBeNull();
+            result.IsFailure.Should().BeTrue();
+            result.Error.Should().Be(DomainErrors.IntervaloDeTiempo.InicioMayorOIgualAFin);
+        }
+
+        [Fact]
+        public void Crear_ParametrosCorrectos_CreaInstanciaCorrecta()
+        {
+            // Arrange
+            var inicio = DateTime.UtcNow;
+            var fin = inicio.AddMinutes(30);
+
+            // Act
+            var result = IntervaloDeTiempo.Crear(inicio, fin);
+
+            // Assert
+            result.IsSuccess.Should().BeTrue();
+
+            var intervalo = result.Value;
+            intervalo.Inicio.Should().Be(inicio);
+            intervalo.Fin.Should().Be(fin);
         }
     }
 }

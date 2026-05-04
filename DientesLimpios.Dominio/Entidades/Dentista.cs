@@ -1,4 +1,6 @@
 ﻿using DientesLimpios.Dominio.Comunes;
+using DientesLimpios.Dominio.Comunes.PatronResultados;
+using DientesLimpios.Dominio.Errores;
 using DientesLimpios.Dominio.Excepciones;
 using DientesLimpios.Dominio.ObjetosDeValor;
 
@@ -10,44 +12,47 @@ namespace DientesLimpios.Dominio.Entidades
         public string Nombre { get; private set; } = null!;
         public Email Email { get; private set; } = null!;
 
-        private Dentista() { }
+        private Dentista() { } // EF Core
 
-        public Dentista(string nombre, Email email)
+        private Dentista(string nombre, Email email)
         {
-            AplicarReglasDeNegocioNombre(nombre);
-            AplicarReglasDeNegocioEmail(email);
-
             Id = Guid.CreateVersion7();
             Nombre = nombre;
             Email = email;
         }
 
-        public void ActualizarNombre(string nombre)
-        {
-            AplicarReglasDeNegocioNombre(nombre);
-            Nombre = nombre;
-        }
 
-        private void AplicarReglasDeNegocioNombre(string nombre)
+        public static Result<Dentista> Crear(string nombre, string email)
         {
             if (string.IsNullOrWhiteSpace(nombre))
-            {
-                throw new ExcepcionDeReglaDeNegocio($"El {nameof(nombre)} es obligatorio");
-            }
+                return Result.Failure<Dentista>(DomainErrors.Dentista.NombreObligatorio);
+
+            var emailResult = Email.Crear(email);
+            if (emailResult.IsFailure)
+                return Result.Failure<Dentista>(emailResult.Error);
+
+            return Result.Success(new Dentista(nombre, emailResult.Value));
         }
 
-        public void ActualizarEmail(Email email)
+
+        public Result ActualizarNombre(string nombre)
         {
-            AplicarReglasDeNegocioEmail(email);
-            Email = email;
+            if (string.IsNullOrWhiteSpace(nombre))
+                return Result.Failure(DomainErrors.Dentista.NombreObligatorio);
+
+            Nombre = nombre;
+            return Result.Success();
         }
 
-        private void AplicarReglasDeNegocioEmail(Email email)
+        public Result ActualizarEmail(string email)
         {
-            if (email is null)
-            {
-                throw new ExcepcionDeReglaDeNegocio($"El {nameof(email)} es obligatorio");
-            }
+            var emailResult = Email.Crear(email);
+            if (emailResult.IsFailure)
+                return Result.Failure(emailResult.Error);
+
+            Email = emailResult.Value;
+            return Result.Success();
         }
+
     }
 }

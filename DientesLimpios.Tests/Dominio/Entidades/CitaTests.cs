@@ -1,6 +1,6 @@
 ﻿using DientesLimpios.Dominio.Entidades;
 using DientesLimpios.Dominio.Enums;
-using DientesLimpios.Dominio.Excepciones;
+using DientesLimpios.Dominio.Errores;
 using DientesLimpios.Dominio.ObjetosDeValor;
 using FluentAssertions; // Replaces Assert.AreEqual
 
@@ -10,24 +10,36 @@ namespace DientesLimpios.Tests.Dominio.Entidades
     {
         // In xUnit, the class is re-instantiated for every test.
         // So these fields act as your 'Setup'.
-        private readonly Guid _pacienteId = Guid.NewGuid();
-        private readonly Guid _dentistaId = Guid.NewGuid();
-        private readonly Guid _consultorioId = Guid.NewGuid();
+        private readonly DateTime _ahoraUtc;
+        private readonly Guid _pacienteId;
+        private readonly Guid _dentistaId;
+        private readonly Guid _consultorioId;
+        private readonly IntervaloDeTiempo _intervalo;
 
-        // We create a valid interval for general use
-        private readonly IntervaloDeTiempo _intervalo = new IntervaloDeTiempo(
-            DateTime.UtcNow.AddDays(1),
-            DateTime.UtcNow.AddDays(2)
-        );
+        public CitaTests()
+        {
+            _ahoraUtc = DateTime.UtcNow;
+            _pacienteId = Guid.NewGuid();
+            _dentistaId = Guid.NewGuid();
+            _consultorioId = Guid.NewGuid();
+            // We create a valid interval for general use
+            _intervalo = IntervaloDeTiempo.Crear(
+                _ahoraUtc.AddDays(1),
+                _ahoraUtc.AddDays(2)
+            ).Value;
+        }
 
         [Fact]
-        public void Constructor_CitaValida_EstadoEsProgramada()
+        public void Crear_CitaValida_EstadoEsProgramada()
         {
             // Act
-            var cita = new Cita(_pacienteId, _dentistaId, _consultorioId, _intervalo);
+            var citaResult = Cita.Crear(_pacienteId, _dentistaId, _consultorioId, _intervalo.Inicio, _intervalo.Fin, _ahoraUtc);
 
             // Assert
             // We use .Should().Be() for value comparison
+            citaResult.IsSuccess.Should().BeTrue();
+            var cita = citaResult.Value;
+
             cita.PacienteId.Should().Be(_pacienteId);
             cita.DentistaId.Should().Be(_dentistaId);
             cita.ConsultorioId.Should().Be(_consultorioId);
@@ -38,70 +50,93 @@ namespace DientesLimpios.Tests.Dominio.Entidades
         }
 
         [Fact]
-        public void Constructor_FechaInicioEnElPasado_LanzaExcepcion()
+        public void Crear_FechaInicioEnElPasado_RetornaFailureEnElPasado()
         {
             // Arrange
-            var intervaloPasado = new IntervaloDeTiempo(DateTime.UtcNow.AddDays(-1), DateTime.UtcNow);
+            var fechaInicio = DateTime.UtcNow.AddDays(-1);
+            var fechaFin = DateTime.UtcNow.AddHours(-23);  // still after fechaInicio;
 
             // Act
-            Action act = () => new Cita(_pacienteId, _dentistaId, _consultorioId, intervaloPasado);
+            var result = Cita.Crear(_pacienteId, _dentistaId, _consultorioId, fechaInicio, fechaFin, _ahoraUtc);
 
             // Assert
-            act.Should().Throw<ExcepcionDeReglaDeNegocio>();
+            result.IsFailure.Should().BeTrue();
+            result.Error.Should().Be(DomainErrors.Cita.EnElPasado);
         }
 
         [Fact]
         public void Cancelar_CitaProgramada_CambiaEstadoACancelada()
         {
             // Arrange
-            var cita = new Cita(_pacienteId, _dentistaId, _consultorioId, _intervalo);
+            var citaResult = Cita.Crear(_pacienteId, _dentistaId, _consultorioId, _intervalo.Inicio, _intervalo.Fin, _ahoraUtc);
+            
+            citaResult.IsSuccess.Should().BeTrue();
+            var cita = citaResult.Value;
 
             // Act
-            cita.Cancelar();
+            var result = cita.Cancelar();
 
             // Assert
+            result.IsSuccess.Should().BeTrue();
             cita.Estado.Should().Be(EstadoCita.Cancelada);
         }
 
         [Fact]
-        public void Cancelar_CitaNoProgramada_LanzaExcepcion()
+        public void Cancelar_CitaYaCancelada_RetornaFailureSoloSePuedenCancelarProgramadas()
         {
             // Arrange
-            var cita = new Cita(_pacienteId, _dentistaId, _consultorioId, _intervalo);
-            cita.Cancelar(); // Now it is 'Cancelada'
+            var citaResult = Cita.Crear(_pacienteId, _dentistaId, _consultorioId, _intervalo.Inicio, _intervalo.Fin, _ahoraUtc);
+
+            citaResult.IsSuccess.Should().BeTrue();
+            var cita = citaResult.Value;
+
+            var citaCancelarResult = cita.Cancelar(); // Now it is 'Cancelada'
+            citaCancelarResult.IsSuccess.Should().BeTrue();
 
             // Act
-            Action act = () => cita.Cancelar(); // Trying to cancel again
+            var citaCanceladaResult = cita.Cancelar(); // Trying to cancel again
+
 
             // Assert
-            act.Should().Throw<ExcepcionDeReglaDeNegocio>();
+            citaCanceladaResult.IsFailure.Should().BeTrue();
+            citaCanceladaResult.Error.Should().Be(DomainErrors.Cita.SoloSePuedenCancelarProgramadas);
         }
 
         [Fact]
         public void Completar_CitaProgramada_CambiaEstadoACompletada()
         {
             // Arrange
-            var cita = new Cita(_pacienteId, _dentistaId, _consultorioId, _intervalo);
+            var citaResult = Cita.Crear(_pacienteId, _dentistaId, _consultorioId, _intervalo.Inicio, _intervalo.Fin, _ahoraUtc);
+
+            citaResult.IsSuccess.Should().BeTrue();
+            var cita = citaResult.Value;
 
             // Act
-            cita.Completar();
+            var result = cita.Completar();
 
             // Assert
+            result.IsSuccess.Should().BeTrue();
             cita.Estado.Should().Be(EstadoCita.Completada);
         }
 
         [Fact]
-        public void Completar_CitaCancelada_LanzaExcepcion()
+        public void Completar_CitaCancelada_RetornaFailure()
         {
             // Arrange
-            var cita = new Cita(_pacienteId, _dentistaId, _consultorioId, _intervalo);
-            cita.Cancelar();
+            var citaResult = Cita.Crear(_pacienteId, _dentistaId, _consultorioId, _intervalo.Inicio, _intervalo.Fin, _ahoraUtc);
+
+            citaResult.IsSuccess.Should().BeTrue();
+            var cita = citaResult.Value;
+
+            var citaCancelarResult = cita.Cancelar();
+            citaCancelarResult.IsSuccess.Should().BeTrue();
 
             // Act
-            Action act = () => cita.Completar();
+            var resultCompletar = cita.Completar();
 
             // Assert
-            act.Should().Throw<ExcepcionDeReglaDeNegocio>();
+            resultCompletar.IsFailure.Should().BeTrue();
+            resultCompletar.Error.Should().Be(DomainErrors.Cita.SoloSePuedenCompletarProgramadas);
         }
     }
 }
