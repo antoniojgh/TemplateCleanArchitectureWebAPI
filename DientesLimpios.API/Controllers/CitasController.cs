@@ -1,4 +1,6 @@
-﻿using DientesLimpios.API.DTOs.Citas;
+﻿using Asp.Versioning;
+using DientesLimpios.API.DTOs.Citas;
+using DientesLimpios.API.Extensiones;
 using DientesLimpios.Aplicacion.CasosdeUso.Citas.Comandos.CancelarCita;
 using DientesLimpios.Aplicacion.CasosdeUso.Citas.Comandos.CompletarCita;
 using DientesLimpios.Aplicacion.CasosdeUso.Citas.Comandos.CrearCita;
@@ -6,7 +8,6 @@ using DientesLimpios.Aplicacion.CasosdeUso.Citas.Consultas.ObtenerDetalleCita;
 using DientesLimpios.Aplicacion.CasosdeUso.Citas.Consultas.ObtenerListadoCitas;
 using DientesLimpios.Aplicacion.Utilidades.Mediador;
 using Microsoft.AspNetCore.Mvc;
-using Asp.Versioning;
 
 namespace DientesLimpios.API.Controllers
 {
@@ -18,22 +19,24 @@ namespace DientesLimpios.API.Controllers
     public class CitasController(IMediator mediator) : ControllerBase
     {
         [HttpGet]
-        public async Task<ActionResult<List<CitaListadoDTO>>> Get([FromQuery] ConsultaObtenerListadoCitas consulta)
+        public async Task<IActionResult> Get([FromQuery] ConsultaObtenerListadoCitas consulta, CancellationToken ct)
         {
-            var resultado = await mediator.Send(consulta);
-            return resultado;
+            var result = await mediator.Send(consulta, ct);
+            return result.ToActionResult(HttpContext);
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<CitaDetalleDTO>> Get(Guid id)
+        public async Task<IActionResult> Get(Guid id, CancellationToken ct)
         {
             var consulta = new ConsultaObtenerDetalleCita { Id = id };
-            var resultado = await mediator.Send(consulta);
-            return resultado;
+
+            var result = await mediator.Send(consulta, ct);
+            
+            return result.ToActionResult(HttpContext);
         }
 
         [HttpPost]
-        public async Task<IActionResult> Post(CrearCitaDTO crearCitaDTO)
+        public async Task<IActionResult> Post(CrearCitaDTO crearCitaDTO, CancellationToken ct)
         {
             var comando = new ComandoCrearCita
             {
@@ -44,24 +47,29 @@ namespace DientesLimpios.API.Controllers
                 FechaFin = crearCitaDTO.FechaFin
             };
 
-            var resultado = await mediator.Send(comando);
-            return Ok();
+            var result = await mediator.Send(comando, ct);
+
+            return result.ToActionResult(HttpContext);
         }
 
         [HttpPost("completar/{id}")]
-        public async Task<IActionResult> Completar(Guid id)
+        public async Task<IActionResult> Completar(Guid id, CancellationToken ct)
         {
             var consulta = new ComandoCompletarCita { Id = id };
-            await mediator.Send(consulta);
-            return Ok();
+
+            var result = await mediator.Send(consulta, ct);
+
+            return result.ToActionResult(HttpContext);
         }
 
         [HttpPost("cancelar/{id}")]
-        public async Task<IActionResult> Cancelar(Guid id)
+        public async Task<IActionResult> Cancelar(Guid id, CancellationToken ct)
         {
             var consulta = new ComandoCancelarCita { Id = id };
-            await mediator.Send(consulta);
-            return Ok();
+
+            var result = await mediator.Send(consulta, ct);
+            
+            return result.ToActionResult(HttpContext);
         }
 
 

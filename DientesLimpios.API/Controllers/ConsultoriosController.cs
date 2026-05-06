@@ -1,5 +1,6 @@
 ﻿using Asp.Versioning;
 using DientesLimpios.API.DTOs.Consultorios;
+using DientesLimpios.API.Extensiones;
 using DientesLimpios.Aplicacion.CasosdeUso.Consultorios.Comandos.ActualizarConsultorio;
 using DientesLimpios.Aplicacion.CasosdeUso.Consultorios.Comandos.BorrarConsultorio;
 using DientesLimpios.Aplicacion.CasosdeUso.Consultorios.Comandos.CrearConsultorio;
@@ -19,44 +20,54 @@ namespace DientesLimpios.API.Controllers
     {
 
         [HttpGet]
-        public async Task<ActionResult<List<ConsultorioListadoDTO>>> Get()
+        public async Task<IActionResult> Get(CancellationToken ct)
         {
             var consulta = new ConsultaObtenerListadoConsultorios();
-            var resultado = await mediator.Send(consulta);
-            return resultado;
+
+            var result = await mediator.Send(consulta, ct);
+
+            return result.ToActionResult(HttpContext);
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<ConsultorioDetalleDTO>> Get(Guid id)
+        public async Task<IActionResult> Get(Guid id, CancellationToken ct)
         {
             var consulta = new ConsultaObtenerDetalleConsultorio { Id = id };
-            var resultado = await mediator.Send(consulta);
-            return resultado;
+
+            var result = await mediator.Send(consulta, ct);
+
+            return result.ToActionResult(HttpContext);
         }
 
 
         [HttpPost]
-        public async Task<IActionResult> Post(CrearConsultorioDTO crearConsultorioDTO)
+        public async Task<IActionResult> Post(CrearConsultorioDTO crearConsultorioDTO, CancellationToken ct)
         {
             var comando = new ComandoCrearConsultorio { Nombre = crearConsultorioDTO.Nombre };
-            await mediator.Send(comando);
-            return Ok();
+
+            var result = await mediator.Send(comando, ct);
+
+            return result.ToActionResult(HttpContext);
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> Put(Guid id, ActualizarConsultorioDTO actualizarConsultorioDTO)
+        public async Task<IActionResult> Put(Guid id, ActualizarConsultorioDTO actualizarConsultorioDTO, CancellationToken ct)
         {
             var comando = new ComandoActualizarConsultorio { Id = id, Nombre = actualizarConsultorioDTO.Nombre };
-            await mediator.Send(comando);
-            return NoContent();
+
+            var result = await mediator.Send(comando, ct);
+
+            return result.ToActionResult(HttpContext);
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(Guid id)
+        public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
         {
             var comando = new ComandoBorrarConsultorio { Id = id};
-            await mediator.Send(comando);
-            return NoContent();
+
+            var result = await mediator.Send(comando, ct);
+
+            return result.ToActionResult(HttpContext);
         }
     }
 }

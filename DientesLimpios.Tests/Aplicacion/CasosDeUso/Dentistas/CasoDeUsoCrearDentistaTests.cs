@@ -35,24 +35,28 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Dentistas
         // Primero hacemos las pruebas propias del Handler:
 
         [Fact]
-        public async Task Handle_CuandoDatosValidos_CreaDentistaPersisteYRetornaId()
+        public async Task Handle_DatosValidos_CreaDentistaPersisteYRetornaId()
         {
             // Arrange
             var comando = new ComandoCrearDentista { Nombre = "Felipe", Email = "felipe@ejemplo.com" };
-            var dentistaCreado = Dentista.Crear(comando.Nombre, comando.Email).Value;
-            var id = dentistaCreado.Id;
 
-            _repositorio.Agregar(Arg.Any<Dentista>()).Returns(dentistaCreado);
+            // Capture whatever Dentista the handler passes to Agregar.
+            Dentista? dentistaCreadoEnHandler = null;
+
+            _repositorio.Agregar(Arg.Do<Dentista>(d => dentistaCreadoEnHandler = d))
+                        .Returns(c => c.Arg<Dentista>());   // echo back what was passed
 
             // Act
             var result = await _handler.Handle(comando, CancellationToken.None);
 
             // Assert
             result.IsSuccess.Should().BeTrue();
-            result.Value.Should().Be(id);
+            dentistaCreadoEnHandler.Should().NotBeNull();
+            dentistaCreadoEnHandler!.Nombre.Should().Be("Felipe");
+            dentistaCreadoEnHandler.Email.Valor.Should().Be("felipe@ejemplo.com");
+            result.Value.Should().Be(dentistaCreadoEnHandler.Id);   // ← compare against the captured Dentista
             await _repositorio.Received(1).Agregar(Arg.Any<Dentista>());
             await _unidadDeTrabajo.Received(1).Persistir();
-
         }
 
         [Theory]

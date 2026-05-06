@@ -1,7 +1,6 @@
 using Asp.Versioning;
 using DientesLimpios.API.ExceptionHandlers;
 using DientesLimpios.API.Jobs;
-using DientesLimpios.API.Middlewares;
 using DientesLimpios.Aplicacion;
 using DientesLimpios.Identidad;
 using DientesLimpios.Identidad.Modelos;

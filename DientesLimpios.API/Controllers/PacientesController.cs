@@ -1,5 +1,6 @@
 ﻿using Asp.Versioning;
 using DientesLimpios.API.DTOs.Pacientes;
+using DientesLimpios.API.Extensiones;
 using DientesLimpios.API.Utilidades;
 using DientesLimpios.Aplicacion.CasosdeUso.Pacientes.Comandos.ActualizarPaciente;
 using DientesLimpios.Aplicacion.CasosdeUso.Pacientes.Comandos.BorrarPaciente;
@@ -20,31 +21,37 @@ namespace DientesLimpios.API.Controllers
     {
 
         [HttpGet]
-        public async Task<ActionResult<List<PacienteListadoDTO>>> Get([FromQuery] ConsultaObtenerListadoPacientes consulta)
+        public async Task<IActionResult> Get([FromQuery] ConsultaObtenerListadoPacientes consulta, CancellationToken ct)
         {
-            var resultado = await mediator.Send(consulta);
-            HttpContext.InsertarPaginacionEnCabecera(resultado.Total);
-            return resultado.Elementos;
+            var result = await mediator.Send(consulta, ct);
+
+            HttpContext.InsertarPaginacionEnCabecera(result.Value.Total);
+
+            return result.ToActionResult(HttpContext);
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<PacienteDetalleDTO>> Get(Guid id)
+        public async Task<IActionResult> Get(Guid id, CancellationToken ct)
         {
             var consulta = new ConsultaObtenerDetallePaciente() { Id = id };
-            var resultado = await mediator.Send(consulta);
-            return resultado;
+
+            var result = await mediator.Send(consulta, ct);
+
+            return result.ToActionResult(HttpContext);
         }
 
         [HttpPost]
-        public async Task<IActionResult> Post(CrearPacienteDTO crearPacienteDTO)
+        public async Task<IActionResult> Post(CrearPacienteDTO crearPacienteDTO, CancellationToken ct)
         {
             var comando = new ComandoCrearPaciente { Nombre = crearPacienteDTO.Nombre, Email = crearPacienteDTO.Email };
-            await mediator.Send(comando);
-            return Ok();
+
+            var result = await mediator.Send(comando, ct);
+
+            return result.ToActionResult(HttpContext);
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> Put(Guid id, ActualizarPacienteDTO actualizarPacienteDTO)
+        public async Task<IActionResult> Put(Guid id, ActualizarPacienteDTO actualizarPacienteDTO, CancellationToken ct)
         {
             var comando = new ComandoActualizarPaciente
             {
@@ -52,16 +59,20 @@ namespace DientesLimpios.API.Controllers
                 Nombre = actualizarPacienteDTO.Nombre,
                 Email = actualizarPacienteDTO.Email
             };
-            await mediator.Send(comando);
-            return Ok();
+
+            var result = await mediator.Send(comando, ct);
+
+            return result.ToActionResult(HttpContext);
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(Guid id)
+        public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
         {
             var comando = new ComandoBorrarPaciente { Id = id };
-            await mediator.Send(comando);
-            return NoContent();
+
+            var result = await mediator.Send(comando, ct);
+
+            return result.ToActionResult(HttpContext);
         }
 
     }

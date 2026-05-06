@@ -1,4 +1,5 @@
-﻿using DientesLimpios.Aplicacion.CasosdeUso.Pacientes.Comandos.CrearPaciente;
+﻿using DientesLimpios.Aplicacion.CasosdeUso.Dentistas.Comandos.CrearDentista;
+using DientesLimpios.Aplicacion.CasosdeUso.Pacientes.Comandos.CrearPaciente;
 using DientesLimpios.Aplicacion.Interfaces.Persistencia;
 using DientesLimpios.Aplicacion.Interfaces.Repositorios;
 using DientesLimpios.Dominio.Entidades;
@@ -39,20 +40,24 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Pacientes
         {
             // Arrange
             var comando = new ComandoCrearPaciente { Nombre = "Felipe", Email = "felipe@ejemplo.com" };
-            var pacienteCreado = Paciente.Crear(comando.Nombre, comando.Email).Value;
-            var id = pacienteCreado.Id;
 
-            _repositorio.Agregar(Arg.Any<Paciente>()).Returns(pacienteCreado);
+            // Capture whatever Paciente the handler passes to Agregar.
+            Paciente? pacienteCreadoEnHandler = null;
+
+            _repositorio.Agregar(Arg.Do<Paciente>(d => pacienteCreadoEnHandler = d))
+                        .Returns(c => c.Arg<Paciente>());   // echo back what was passed
 
             // Act
             var result = await _handler.Handle(comando, CancellationToken.None);
 
             // Assert
             result.IsSuccess.Should().BeTrue();
-            result.Value.Should().Be(id);
+            pacienteCreadoEnHandler.Should().NotBeNull();
+            pacienteCreadoEnHandler!.Nombre.Should().Be("Felipe");
+            pacienteCreadoEnHandler.Email.Valor.Should().Be("felipe@ejemplo.com");
+            result.Value.Should().Be(pacienteCreadoEnHandler.Id);   // ← compare against the captured Paciente
             await _repositorio.Received(1).Agregar(Arg.Any<Paciente>());
             await _unidadDeTrabajo.Received(1).Persistir();
-
         }
 
         [Theory]
