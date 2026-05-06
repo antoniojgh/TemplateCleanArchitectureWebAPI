@@ -1,12 +1,13 @@
+using Asp.Versioning;
+using DientesLimpios.API.ExceptionHandlers;
 using DientesLimpios.API.Jobs;
 using DientesLimpios.API.Middlewares;
 using DientesLimpios.Aplicacion;
-using DientesLimpios.Infraestructura;
-using DientesLimpios.Persistencia;
 using DientesLimpios.Identidad;
 using DientesLimpios.Identidad.Modelos;
+using DientesLimpios.Infraestructura;
+using DientesLimpios.Persistencia;
 using Microsoft.AspNetCore.Mvc.Authorization;
-using Asp.Versioning;
 using Serilog;
 
 
@@ -62,6 +63,9 @@ try
     })
     .AddMvc(); // Add MVC support for versioning
 
+    // Configuración global de manejo de excepciones
+    builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+    builder.Services.AddProblemDetails();
 
     // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
     builder.Services.AddOpenApi();
@@ -73,8 +77,7 @@ try
 
     app.MapIdentityApi<Usuario>();
 
-    // Agregar el middleware personalizado para el manejo de excepciones
-    app.UseManejadorExcepciones();
+    app.UseExceptionHandler();
 
     // Configure the HTTP request pipeline.
     if (app.Environment.IsDevelopment())
