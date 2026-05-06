@@ -22,17 +22,7 @@ namespace DientesLimpios.Aplicacion.Utilidades.Mediador
             // short-circuit by returning Result.Failure(ValidationError).
             var validationFailure = await TryValidate(request, cancellationToken);
             if (validationFailure is not null)
-            {
-                // If TResponse is a Result type, build a failure result.
-                if (typeof(Result).IsAssignableFrom(typeof(TResponse)))
                     return CreateValidationFailureResult<TResponse>(validationFailure);
-
-                // If TResponse is not a Result type (legacy code path),
-                // fall back to throwing. After full migration, this branch
-                // should never execute.
-                throw new ExcepcionDeValidacion(string.Join("; ",
-                    validationFailure.Errors.Select(e => e.Message)));
-            }
 
             // Step 2: dispatch.
             var handlerType = typeof(IRequestHandler<,>)

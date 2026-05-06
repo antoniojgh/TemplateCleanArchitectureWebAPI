@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace DientesLimpios.Dominio.Enums
+﻿namespace DientesLimpios.Dominio.Enums
 {
     public enum EstadoCita
     {
