@@ -1,8 +1,9 @@
 ﻿using DientesLimpios.Aplicacion.Utilidades.Mediador;
+using DientesLimpios.Dominio.Comunes.PatronResultados;
 
 namespace DientesLimpios.Aplicacion.CasosdeUso.Citas.Comandos.CrearCita
 {
-    public class ComandoCrearCita : IRequest<Guid>
+    public class ComandoCrearCita : IRequest<Result<Guid>>
     {
         public Guid PacienteId { get; set; }
         public Guid DentistaId { get; set; }

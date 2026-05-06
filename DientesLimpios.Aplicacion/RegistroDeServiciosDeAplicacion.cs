@@ -16,9 +16,6 @@ namespace DientesLimpios.Aplicacion
 
             services.Scan(scan =>
             scan.FromAssembliesOf(typeof(IMediator))
-            .AddClasses(c => c.AssignableTo(typeof(IRequestHandler<>)))
-            .AsImplementedInterfaces()
-            .WithScopedLifetime()
             .AddClasses(c => c.AssignableTo(typeof(IRequestHandler<,>)))
             .AsImplementedInterfaces()
             .WithScopedLifetime());

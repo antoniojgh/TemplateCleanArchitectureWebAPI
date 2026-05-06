@@ -1,13 +1,17 @@
 ﻿using DientesLimpios.Aplicacion.Interfaces.Repositorios;
 using DientesLimpios.Aplicacion.Utilidades.Comunes;
 using DientesLimpios.Aplicacion.Utilidades.Mediador;
+using DientesLimpios.Dominio.Comunes.PatronResultados;
+using Microsoft.Extensions.Logging;
 
 namespace DientesLimpios.Aplicacion.CasosdeUso.Dentistas.Consultas.ObtenerListadoDentistas
 {
-    public class HandlerObtenerListadoDentistas(IRepositorioDentistas repositorio) : IRequestHandler<ConsultaObtenerListadoDentistas, PaginadoDTO<DentistaListadoDTO>>
+    public class HandlerObtenerListadoDentistas(IRepositorioDentistas repositorio, ILogger<HandlerObtenerListadoDentistas> logger) : IRequestHandler<ConsultaObtenerListadoDentistas, Result<PaginadoDTO<DentistaListadoDTO>>>
     {
-        public async Task<PaginadoDTO<DentistaListadoDTO>> Handle(ConsultaObtenerListadoDentistas request)
+        public async Task<Result<PaginadoDTO<DentistaListadoDTO>>> Handle(ConsultaObtenerListadoDentistas request, CancellationToken cancellationToken)
         {
+            logger.LogInformation("Obteniendo listado de dentistas");
+
             var dentistasFiltrado = await repositorio.ObtenerFiltrado(request);
             var totalDentistas = await repositorio.ObtenerCantidadTotalRegistros();
 
@@ -19,7 +23,9 @@ namespace DientesLimpios.Aplicacion.CasosdeUso.Dentistas.Consultas.ObtenerListad
                 Total = totalDentistas
             };
 
-            return dentistasDTO;
+            logger.LogInformation("Listado de dentistas obtenido correctamente con {NumeroDentistas} dentistas", dentistasDTO.Elementos.Count);
+
+            return Result.Success(dentistasDTO);
         }
     }
 }

@@ -1,72 +1,93 @@
 ﻿using DientesLimpios.Aplicacion.Excepciones;
+using DientesLimpios.Aplicacion.Utilidades.PatronResultados;
+using DientesLimpios.Dominio.Comunes.PatronResultados;
 using FluentValidation;
-using FluentValidation.Results;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DientesLimpios.Aplicacion.Utilidades.Mediador
 {
     public class MediadorSimple : IMediator
     {
-        private readonly IServiceProvider serviceProvider;
+        private readonly IServiceProvider _serviceProvider;
 
         public MediadorSimple(IServiceProvider serviceProvider)
         {
-            this.serviceProvider = serviceProvider;
+            _serviceProvider = serviceProvider;
         }
 
-        public async Task<TResponse> Send<TResponse>(IRequest<TResponse> request)
+        public async Task<TResponse> Send<TResponse>(
+            IRequest<TResponse> request,
+            CancellationToken cancellationToken = default)
         {
-            await RealizarValidaciones(request);
-
-            var tipoCasoDeUso = typeof(IRequestHandler<,>)
-        .MakeGenericType(request.GetType(), typeof(TResponse));
-
-            var casoDeUso = serviceProvider.GetService(tipoCasoDeUso);
-
-            if (casoDeUso is null)
+            // Step 1: validate. If validation fails AND the response type is a Result,
+            // short-circuit by returning Result.Failure(ValidationError).
+            var validationFailure = await TryValidate(request, cancellationToken);
+            if (validationFailure is not null)
             {
-                throw new ExcepcionDeMediador($"No se encontró un handler para {request.GetType().Name}");
+                // If TResponse is a Result type, build a failure result.
+                if (typeof(Result).IsAssignableFrom(typeof(TResponse)))
+                    return CreateValidationFailureResult<TResponse>(validationFailure);
+
+                // If TResponse is not a Result type (legacy code path),
+                // fall back to throwing. After full migration, this branch
+                // should never execute.
+                throw new ExcepcionDeValidacion(string.Join("; ",
+                    validationFailure.Errors.Select(e => e.Message)));
             }
 
-            var metodo = tipoCasoDeUso.GetMethod("Handle")!;
-            return await (Task<TResponse>)metodo.Invoke(casoDeUso, new object[] { request })!;
+            // Step 2: dispatch.
+            var handlerType = typeof(IRequestHandler<,>)
+                .MakeGenericType(request.GetType(), typeof(TResponse));
+
+            var handler = _serviceProvider.GetService(handlerType)
+                ?? throw new ExcepcionDeMediador(
+                    $"No se encontró un handler para {request.GetType().Name}");
+
+            var handleMethod = handlerType.GetMethod("Handle")!;
+            return await (Task<TResponse>)handleMethod.Invoke(
+                handler, new object[] { request, cancellationToken })!;
         }
 
-        public async Task Send(IRequest request)
+        private async Task<ValidationError?> TryValidate(
+            object request, CancellationToken cancellationToken)
         {
-            await RealizarValidaciones(request);
+            var validatorType = typeof(IValidator<>).MakeGenericType(request.GetType());
+            var validator = (IValidator?)_serviceProvider.GetService(validatorType);
 
-            var tipoCasoDeUso = typeof(IRequestHandler<>).MakeGenericType(request.GetType());
+            if (validator is null)
+                return null;
 
-            var casoDeUso = serviceProvider.GetService(tipoCasoDeUso);
+            var context = new ValidationContext<object>(request);
+            var validationResult = await validator.ValidateAsync(context, cancellationToken);
 
-            if (casoDeUso is null)
-            {
-                throw new ExcepcionDeMediador($"No se encontró un handler para {request.GetType().Name}");
-            }
+            if (validationResult.IsValid)
+                return null;
 
-            var metodo = tipoCasoDeUso.GetMethod("Handle")!;
-            await (Task)metodo.Invoke(casoDeUso, new object[] { request })!;
+            var errors = validationResult.Errors
+                .Select(f => new Error(f.PropertyName, f.ErrorMessage))
+                .ToArray();
+
+            return new ValidationError(errors);
         }
 
-        private async Task RealizarValidaciones(object request)
+        private static TResponse CreateValidationFailureResult<TResponse>(
+            ValidationError validationError)
         {
-            var tipoValidador = typeof(IValidator<>).MakeGenericType(request.GetType());
+            // If TResponse is exactly Result, return Result.Failure(validationError).
+            if (typeof(TResponse) == typeof(Result))
+                return (TResponse)(object)Result.Failure(validationError);
 
-            var validador = (IValidator?)serviceProvider.GetService(tipoValidador);
+            // If TResponse is Result<T>, use reflection to build Result.Failure<T>(validationError).
+            var responseType = typeof(TResponse);
+            var valueType = responseType.GetGenericArguments()[0];
 
-            if (validador is not null)
-            {
-                var contexto = new ValidationContext<object>(request);
-                var validationResult = await validador.ValidateAsync(contexto);
+            var failureMethod = typeof(Result)
+                .GetMethods()
+                .First(m => m.Name == nameof(Result.Failure) && m.IsGenericMethod);
 
-                if (!validationResult.IsValid)
-                    throw new ExcepcionDeValidacion(validationResult);
-            }
+            var genericFailure = failureMethod.MakeGenericMethod(valueType);
+            var failureResult = genericFailure.Invoke(null, new object[] { validationError })!;
+
+            return (TResponse)failureResult;
         }
     }
 }

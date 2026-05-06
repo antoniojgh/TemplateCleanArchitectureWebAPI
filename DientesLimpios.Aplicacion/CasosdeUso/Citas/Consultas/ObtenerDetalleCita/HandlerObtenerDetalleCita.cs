@@ -1,23 +1,26 @@
-﻿using DientesLimpios.Aplicacion.Excepciones;
-using DientesLimpios.Aplicacion.Interfaces.Repositorios;
+﻿using DientesLimpios.Aplicacion.Interfaces.Repositorios;
 using DientesLimpios.Aplicacion.Utilidades.Mediador;
+using DientesLimpios.Dominio.Comunes.PatronResultados;
+using DientesLimpios.Dominio.Errores;
+using Microsoft.Extensions.Logging;
+
 
 namespace DientesLimpios.Aplicacion.CasosdeUso.Citas.Consultas.ObtenerDetalleCita
 {
-    public class HandlerObtenerDetalleCita(IRepositorioCitas repositorio) : IRequestHandler<ConsultaObtenerDetalleCita, CitaDetalleDTO>
+    public class HandlerObtenerDetalleCita(IRepositorioCitas repositorio, ILogger<HandlerObtenerDetalleCita> logger) : IRequestHandler<ConsultaObtenerDetalleCita, Result<CitaDetalleDTO>>
     {
-        public async Task<CitaDetalleDTO> Handle(ConsultaObtenerDetalleCita request)
+        public async Task<Result<CitaDetalleDTO>> Handle(ConsultaObtenerDetalleCita request, CancellationToken cancellationToken)
         {
+            logger.LogInformation("Obteniendo detalle de cita con ID: {CitaId}", request.Id);
+
             var cita = await repositorio.ObtenerPorId(request.Id);
 
             if (cita is null)
-            {
-                throw new ExcepcionNoEncontrado();
-            }
+                return Result.Failure<CitaDetalleDTO>(DomainErrors.Cita.NoEncontrada);
 
-            var citaDetalleDTO = cita.ADto();
+            logger.LogInformation("Detalle de cita obtenido correctamente con ID: {CitaId}", request.Id);
 
-            return citaDetalleDTO;
+            return Result.Success(cita.ADto());
         }
     }
 }

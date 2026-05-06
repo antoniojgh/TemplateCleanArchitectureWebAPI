@@ -2,11 +2,11 @@
 using DientesLimpios.Aplicacion.Interfaces.Persistencia;
 using DientesLimpios.Aplicacion.Interfaces.Repositorios;
 using DientesLimpios.Dominio.Entidades;
-using DientesLimpios.Dominio.ObjetosDeValor;
+using DientesLimpios.Dominio.Errores;
 using FluentAssertions;
 using FluentValidation.TestHelper;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
-using NSubstitute.ExceptionExtensions;
 
 namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Pacientes
 {
@@ -16,6 +16,7 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Pacientes
         private readonly IUnitOfwork _unidadDeTrabajo;
         private readonly HandlerCrearPaciente _handler;
         private readonly ValidadorComandoCrearPaciente _validator;
+        private readonly ILogger<HandlerCrearPaciente> _logger;
 
         public CasoDeUsoCrearPacienteTests()
         {
@@ -24,44 +25,89 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Pacientes
             // y IUnitOfwork, y luego pasarlos al handler y al validador.
 
             _repositorio = Substitute.For<IRepositorioPacientes>();
-            _validator = new ValidadorComandoCrearPaciente();
             _unidadDeTrabajo = Substitute.For<IUnitOfwork>();
+            _logger = Substitute.For<ILogger<HandlerCrearPaciente>>();
+            _validator = new ValidadorComandoCrearPaciente();
 
-            _handler = new HandlerCrearPaciente(_repositorio, _unidadDeTrabajo);
+            _handler = new HandlerCrearPaciente(_repositorio, _unidadDeTrabajo, _logger);
         }
 
         // Primero hacemos las pruebas propias del Handler:
 
         [Fact]
-        public async Task Handle_CuandoDatosValidos_CreaPacienteYPersisteYRetornaId()
+        public async Task Handle_CuandoDatosValidos_CreaPacientePersisteYRetornaId()
         {
+            // Arrange
             var comando = new ComandoCrearPaciente { Nombre = "Felipe", Email = "felipe@ejemplo.com" };
-            var pacienteCreado = new Paciente(comando.Nombre, new Email(comando.Email));
+            var pacienteCreado = Paciente.Crear(comando.Nombre, comando.Email).Value;
             var id = pacienteCreado.Id;
 
             _repositorio.Agregar(Arg.Any<Paciente>()).Returns(pacienteCreado);
 
-            var idResultado = await _handler.Handle(comando);
+            // Act
+            var result = await _handler.Handle(comando, CancellationToken.None);
 
-            idResultado.Should().Be(id);
+            // Assert
+            result.IsSuccess.Should().BeTrue();
+            result.Value.Should().Be(id);
             await _repositorio.Received(1).Agregar(Arg.Any<Paciente>());
             await _unidadDeTrabajo.Received(1).Persistir();
 
         }
 
-        [Fact]
-        public async Task Handle_CuandoOcurreExcepcion_ReversarYLanzaExcepcion()
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        public async Task Handle_NombreInvalido_RetornaFailureYNoPersiste(string? nombre)
         {
-            var comando = new ComandoCrearPaciente { Nombre = "Felipe", Email = "felipe@ejemplo.com" };
-            _repositorio.Agregar(Arg.Any<Paciente>()).Throws(new InvalidOperationException("Error al insertar"));
+            // Arrange
+            var comando = new ComandoCrearPaciente { Nombre = nombre!, Email = "felipe@ejemplo.com" };
 
-            Func<Task> act = async () => await _handler.Handle(comando);
+            // Act
+            var result = await _handler.Handle(comando, CancellationToken.None);
 
             // Assert
-            // Verify it throws the specific exception
-            await act.Should().ThrowAsync<InvalidOperationException>();
+            result.IsFailure.Should().BeTrue();
+            result.Error.Should().Be(DomainErrors.Paciente.NombreObligatorio);
+            await _repositorio.DidNotReceive().Agregar(Arg.Any<Paciente>());
+            await _unidadDeTrabajo.DidNotReceive().Persistir();
+        }
 
-            await _unidadDeTrabajo.Received(1).Reversar();
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        public async Task Handle_EmailVacio_RetornaFailureEmailVacio(string? email)
+        {
+            // Arrange
+            var comando = new ComandoCrearPaciente { Nombre = "Felipe", Email = email! };
+
+            // Act
+            var result = await _handler.Handle(comando, CancellationToken.None);
+
+            // Assert
+            result.IsFailure.Should().BeTrue();
+            result.Error.Should().Be(DomainErrors.Email.Vacio);
+            await _repositorio.DidNotReceive().Agregar(Arg.Any<Paciente>());
+            await _unidadDeTrabajo.DidNotReceive().Persistir();
+        }
+
+        [Theory]
+        [InlineData("EmailInvalido")]
+        [InlineData("sin-arroba.com")]
+        public async Task Handle_EmailFormatoInvalido_RetornaFailureFormatoInvalido(string? email)
+        {
+            // Arrange
+            var comando = new ComandoCrearPaciente { Nombre = "Felipe", Email = email! };
+
+            // Act
+            var result = await _handler.Handle(comando, CancellationToken.None);
+
+            // Assert
+            result.IsFailure.Should().BeTrue();
+            result.Error.Should().Be(DomainErrors.Email.FormatoInvalido);
+            await _repositorio.DidNotReceive().Agregar(Arg.Any<Paciente>());
             await _unidadDeTrabajo.DidNotReceive().Persistir();
         }
 
@@ -69,22 +115,42 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Pacientes
         // es un componente externo al handler, ya no validamos dentro del Handler sino que lo hacemos medieante
         // un validador externo que se inyecta en el handler mediante la clase "ValidationBehavior"
 
-        [Fact]
-        public async Task Validador_NoValido()
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        public void Validar_NombreInvalido_GeneraErrorDeValidacion(string? nombre)
         {
             // Arrange
-            var comando = new ComandoCrearPaciente { Nombre = "", Email = "felipe" };
+            var comando = new ComandoCrearPaciente { Nombre = nombre!, Email = "felipe@ejemplo.com" };
 
             // Act
             var result = _validator.TestValidate(comando);
 
             // Assert
             result.ShouldHaveValidationErrorFor(c => c.Nombre);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        [InlineData("EmailInvalido")]      // no @
+        [InlineData("sin-arroba.com")]     // no @
+        public void Validar_EmailInvalido_GeneraErrorDeValidacion(string? email)
+        {
+            // Arrange
+            var comando = new ComandoCrearPaciente { Nombre = "Felipe", Email = email! };
+
+            // Act
+            var result = _validator.TestValidate(comando);
+
+            // Assert
             result.ShouldHaveValidationErrorFor(c => c.Email);
         }
 
         [Fact]
-        public void Validador_Valido()
+        public void Validador_NombreYEmailValido_NoGeneraErrorDeValidacion()
         {
             // Arrange
             var comando = new ComandoCrearPaciente { Nombre = "Felipe", Email = "felipe@ejemplo.com" };

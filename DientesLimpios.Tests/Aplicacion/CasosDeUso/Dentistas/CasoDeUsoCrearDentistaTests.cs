@@ -1,13 +1,12 @@
 ﻿using DientesLimpios.Aplicacion.CasosdeUso.Dentistas.Comandos.CrearDentista;
-using DientesLimpios.Aplicacion.CasosdeUso.Pacientes.Comandos.CrearPaciente;
 using DientesLimpios.Aplicacion.Interfaces.Persistencia;
 using DientesLimpios.Aplicacion.Interfaces.Repositorios;
 using DientesLimpios.Dominio.Entidades;
-using DientesLimpios.Dominio.ObjetosDeValor;
+using DientesLimpios.Dominio.Errores;
 using FluentAssertions;
 using FluentValidation.TestHelper;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
-using NSubstitute.ExceptionExtensions;
 
 namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Dentistas
 {
@@ -17,6 +16,7 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Dentistas
         private readonly IUnitOfwork _unidadDeTrabajo;
         private readonly HandlerCrearDentista _handler;
         private readonly ValidadorComandoCrearDentista _validator;
+        private readonly ILogger<HandlerCrearDentista> _logger;
 
         public CasoDeUsoCrearDentistaTests()
         {
@@ -25,44 +25,89 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Dentistas
             // y IUnitOfwork, y luego pasarlos al handler y al validador.
 
             _repositorio = Substitute.For<IRepositorioDentistas>();
-            _validator = new ValidadorComandoCrearDentista();
             _unidadDeTrabajo = Substitute.For<IUnitOfwork>();
+            _logger = Substitute.For<ILogger<HandlerCrearDentista>>();
+            _validator = new ValidadorComandoCrearDentista();
 
-            _handler = new HandlerCrearDentista(_repositorio, _unidadDeTrabajo);
+            _handler = new HandlerCrearDentista(_repositorio, _unidadDeTrabajo, _logger);
         }
 
         // Primero hacemos las pruebas propias del Handler:
 
         [Fact]
-        public async Task Handle_CuandoDatosValidos_CreaDentistaYPersisteYRetornaId()
+        public async Task Handle_CuandoDatosValidos_CreaDentistaPersisteYRetornaId()
         {
+            // Arrange
             var comando = new ComandoCrearDentista { Nombre = "Felipe", Email = "felipe@ejemplo.com" };
-            var dentistaCreado = new Dentista(comando.Nombre, new Email(comando.Email));
+            var dentistaCreado = Dentista.Crear(comando.Nombre, comando.Email).Value;
             var id = dentistaCreado.Id;
 
             _repositorio.Agregar(Arg.Any<Dentista>()).Returns(dentistaCreado);
 
-            var idResultado = await _handler.Handle(comando);
+            // Act
+            var result = await _handler.Handle(comando, CancellationToken.None);
 
-            idResultado.Should().Be(id);
+            // Assert
+            result.IsSuccess.Should().BeTrue();
+            result.Value.Should().Be(id);
             await _repositorio.Received(1).Agregar(Arg.Any<Dentista>());
             await _unidadDeTrabajo.Received(1).Persistir();
 
         }
 
-        [Fact]
-        public async Task Handle_CuandoOcurreExcepcion_ReversarYLanzaExcepcion()
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        public async Task Handle_NombreInvalido_RetornaFailureYNoPersiste(string? nombre)
         {
-            var comando = new ComandoCrearDentista { Nombre = "Felipe", Email = "felipe@ejemplo.com" };
-            _repositorio.Agregar(Arg.Any<Dentista>()).Throws(new InvalidOperationException("Error al insertar"));
+            // Arrange
+            var comando = new ComandoCrearDentista { Nombre = nombre!, Email = "felipe@ejemplo.com" };
 
-            Func<Task> act = async () => await _handler.Handle(comando);
+            // Act
+            var result = await _handler.Handle(comando, CancellationToken.None);
 
             // Assert
-            // Verify it throws the specific exception
-            await act.Should().ThrowAsync<InvalidOperationException>();
+            result.IsFailure.Should().BeTrue();
+            result.Error.Should().Be(DomainErrors.Dentista.NombreObligatorio);
+            await _repositorio.DidNotReceive().Agregar(Arg.Any<Dentista>());
+            await _unidadDeTrabajo.DidNotReceive().Persistir();
+        }
 
-            await _unidadDeTrabajo.Received(1).Reversar();
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        public async Task Handle_EmailVacio_RetornaFailureEmailVacio(string? email)
+        {
+            // Arrange
+            var comando = new ComandoCrearDentista { Nombre = "Felipe", Email = email! };
+
+            // Act
+            var result = await _handler.Handle(comando, CancellationToken.None);
+
+            // Assert
+            result.IsFailure.Should().BeTrue();
+            result.Error.Should().Be(DomainErrors.Email.Vacio);
+            await _repositorio.DidNotReceive().Agregar(Arg.Any<Dentista>());
+            await _unidadDeTrabajo.DidNotReceive().Persistir();
+        }
+
+        [Theory]
+        [InlineData("EmailInvalido")]
+        [InlineData("sin-arroba.com")]
+        public async Task Handle_EmailFormatoInvalido_RetornaFailureFormatoInvalido(string? email)
+        {
+            // Arrange
+            var comando = new ComandoCrearDentista { Nombre = "Felipe", Email = email! };
+
+            // Act
+            var result = await _handler.Handle(comando, CancellationToken.None);
+
+            // Assert
+            result.IsFailure.Should().BeTrue();
+            result.Error.Should().Be(DomainErrors.Email.FormatoInvalido);
+            await _repositorio.DidNotReceive().Agregar(Arg.Any<Dentista>());
             await _unidadDeTrabajo.DidNotReceive().Persistir();
         }
 
@@ -70,22 +115,42 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Dentistas
         // es un componente externo al handler, ya no validamos dentro del Handler sino que lo hacemos medieante
         // un validador externo que se inyecta en el handler mediante la clase "ValidationBehavior"
 
-        [Fact]
-        public async Task Validador_NoValido()
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        public void Validar_NombreInvalido_GeneraErrorDeValidacion(string? nombre)
         {
             // Arrange
-            var comando = new ComandoCrearDentista { Nombre = "", Email = "felipe" };
+            var comando = new ComandoCrearDentista { Nombre = nombre!, Email = "felipe@ejemplo.com" };
 
             // Act
             var result = _validator.TestValidate(comando);
 
             // Assert
             result.ShouldHaveValidationErrorFor(c => c.Nombre);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        [InlineData("EmailInvalido")]      // no @
+        [InlineData("sin-arroba.com")]     // no @
+        public void Validar_EmailInvalido_GeneraErrorDeValidacion(string? email)
+        {
+            // Arrange
+            var comando = new ComandoCrearDentista { Nombre = "Felipe", Email = email! };
+
+            // Act
+            var result = _validator.TestValidate(comando);
+
+            // Assert
             result.ShouldHaveValidationErrorFor(c => c.Email);
         }
 
         [Fact]
-        public void Validador_Valido()
+        public void Validar_NombreYEmailValidos_NoGeneraErrorDeValidacion()
         {
             // Arrange
             var comando = new ComandoCrearDentista { Nombre = "Felipe", Email = "felipe@ejemplo.com" };

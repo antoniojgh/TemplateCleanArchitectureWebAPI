@@ -1,8 +1,9 @@
 ﻿using DientesLimpios.Aplicacion.CasosdeUso.Consultorios.Consultas.ObtenerDetalleConsultorio;
-using DientesLimpios.Aplicacion.Excepciones;
 using DientesLimpios.Aplicacion.Interfaces.Repositorios;
 using DientesLimpios.Dominio.Entidades;
+using DientesLimpios.Dominio.Errores;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using NSubstitute.ReturnsExtensions;
 
@@ -11,51 +12,55 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Consultorios
     public class CasoDeUsoObtenerDetalleConsultorioTests
     {
         private readonly IRepositorioConsultorios _repositorio;
-        private readonly HandlerObtenerDetalleConsultorio _casoDeUso;
-
+        private readonly ILogger<HandlerObtenerDetalleConsultorio> _logger;
+        private readonly HandlerObtenerDetalleConsultorio _handler;
 
         public CasoDeUsoObtenerDetalleConsultorioTests()
         {
             _repositorio = Substitute.For<IRepositorioConsultorios>();
+            _logger = Substitute.For<ILogger<HandlerObtenerDetalleConsultorio>>();
 
-            _casoDeUso = new HandlerObtenerDetalleConsultorio(_repositorio);
+            _handler = new HandlerObtenerDetalleConsultorio(_repositorio, _logger);
         }
 
 
         [Fact]
         public async Task Handle_ConsultorioExiste_RetornaDTO()
         {
-            // Preparación
-            var consultorio = new Consultorio("Consultorio A");
+            // Arrange
+            var consultorioResult = Consultorio.Crear("Consultorio A");
+            var consultorio = consultorioResult.Value;
+
             var id = consultorio.Id;
             var consulta = new ConsultaObtenerDetalleConsultorio { Id = id };
 
             _repositorio.ObtenerPorId(id).Returns(consultorio);
 
-            // Prueba
-            var resultado = await _casoDeUso.Handle(consulta);
+            // Act
+            var result = await _handler.Handle(consulta, CancellationToken.None);
 
-            // Verificación
-            resultado.Should().NotBeNull();
-            resultado.Id.Should().Be(id);
-            resultado.Nombre.Should().Be("Consultorio A");
+            // Assert
+            result.IsSuccess.Should().BeTrue();
+            result.Value.Id.Should().Be(id);
+            result.Value.Nombre.Should().Be("Consultorio A");
+            await _repositorio.Received(1).ObtenerPorId(id);
         }
 
         [Fact]
-        public async Task Handle_ConsultorioNoExiste_LanzaExcepcionNoEncontrado()
+        public async Task Handle_ConsultorioNoExiste_RetornaFailureNoEncontrado()
         {
-            // Preparación
+            // Arrange
             var id = Guid.NewGuid();
             var consulta = new ConsultaObtenerDetalleConsultorio { Id = id };
             _repositorio.ObtenerPorId(id).ReturnsNull();
 
-            // Prueba
-            // Act, Invocamoes el handler del caso de uso
-            Func<Task> act = async () => await _casoDeUso.Handle(consulta);
+            // Act
+            var result = await _handler.Handle(consulta, CancellationToken.None);
 
             // Assert
-            // Verify it throws the specific validation exception
-            await act.Should().ThrowAsync<ExcepcionNoEncontrado>();
+            result.IsFailure.Should().BeTrue();
+            result.Error.Should().Be(DomainErrors.Consultorio.NoEncontrado);
+            await _repositorio.Received(1).ObtenerPorId(id);
         }
 
     }

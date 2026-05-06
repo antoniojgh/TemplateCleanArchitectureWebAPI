@@ -2,6 +2,7 @@
 using DientesLimpios.Aplicacion.Interfaces.Repositorios;
 using DientesLimpios.Dominio.Entidades;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 
 namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Consultorios
@@ -9,52 +10,57 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Consultorios
     public class CasoDeUsoObtenerListadoConsultoriosTests
     {
         private readonly IRepositorioConsultorios _repositorio;
-        private readonly HandlerObtenerListadoConsultorios _casoDeUso;
+        private readonly ILogger<HandlerObtenerListadoConsultorios> _logger;
+        private readonly HandlerObtenerListadoConsultorios _handler;
 
         public CasoDeUsoObtenerListadoConsultoriosTests()
         {
             _repositorio = Substitute.For<IRepositorioConsultorios>();
+            _logger = Substitute.For<ILogger<HandlerObtenerListadoConsultorios>>();
 
-            _casoDeUso = new HandlerObtenerListadoConsultorios(_repositorio);
+            _handler = new HandlerObtenerListadoConsultorios(_repositorio, _logger);
         }
 
 
         [Fact]
         public async Task Handle_CuandoHayConsultorios_RetornaListaDeConsultorioListadoDTO()
         {
+            // Arrange
             var consultorios = new List<Consultorio>
                 {
-                    new Consultorio( "Consultorio A"),
-                    new Consultorio( "Consultorio B"),
+                    Consultorio.Crear("Consultorio A").Value,
+                    Consultorio.Crear("Consultorio B").Value,
                 };
 
             _repositorio.ObtenerTodos().Returns(consultorios);
 
-            var esperado = consultorios.Select(consultorio => consultorio.ADto()).ToList();
+            // Act
+            var result = await _handler.Handle(new ConsultaObtenerListadoConsultorios(), CancellationToken.None);
 
-            var resultado = await _casoDeUso.Handle(new ConsultaObtenerListadoConsultorios());
+            // Assert
+            result.IsSuccess.Should().BeTrue();
+            result.Value.Count.Should().Be(consultorios.Count);
 
-
-            // Verificación:
-
-            resultado.Count.Should().Be(esperado.Count);
-
-            for (int i = 0; i < esperado.Count; i++)
+            for (int i = 0; i < consultorios.Count; i++)
             {
-                resultado[i].Id.Should().Be(esperado[i].Id);
-                resultado[i].Nombre.Should().Be(esperado[i].Nombre);
+                result.Value[i].Id.Should().Be(consultorios[i].Id);
+                result.Value[i].Nombre.Should().Be(consultorios[i].Nombre);
             }
         }
 
         [Fact]
         public async Task Handle_CuandoNoHayConsultorios_RetornaListaVacia()
         {
+            // Arrange
             _repositorio.ObtenerTodos().Returns(new List<Consultorio>());
 
-            var resultado = await _casoDeUso.Handle(new ConsultaObtenerListadoConsultorios());
+            // Act
+            var result = await _handler.Handle(new ConsultaObtenerListadoConsultorios(), CancellationToken.None);
 
-            resultado.Should().NotBeNull();
-            resultado.Count.Should().Be(0);
+            // Assert
+            result.IsSuccess.Should().BeTrue();
+            result.Value.Count.Should().Be(0);
+            await _repositorio.Received(1).ObtenerTodos();
         }
     }
 }

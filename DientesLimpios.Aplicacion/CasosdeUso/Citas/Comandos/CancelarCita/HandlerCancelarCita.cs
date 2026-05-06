@@ -1,34 +1,36 @@
-﻿using DientesLimpios.Aplicacion.Excepciones;
-using DientesLimpios.Aplicacion.Interfaces.Persistencia;
+﻿using DientesLimpios.Aplicacion.Interfaces.Persistencia;
 using DientesLimpios.Aplicacion.Interfaces.Repositorios;
 using DientesLimpios.Aplicacion.Utilidades.Mediador;
+using DientesLimpios.Dominio.Comunes.PatronResultados;
+using DientesLimpios.Dominio.Errores;
+using Microsoft.Extensions.Logging;
+
 
 namespace DientesLimpios.Aplicacion.CasosdeUso.Citas.Comandos.CancelarCita
 {
-    public class HandlerCancelarCita(IRepositorioCitas repositorio, IUnitOfwork unidadDeTrabajo) : IRequestHandler<ComandoCancelarCita>
+    public class HandlerCancelarCita(IRepositorioCitas repositorio, IUnitOfwork unidadDeTrabajo, ILogger<HandlerCancelarCita> logger) : IRequestHandler<ComandoCancelarCita, Result>
     {
 
-        public async Task Handle(ComandoCancelarCita request)
+        public async Task<Result> Handle(ComandoCancelarCita request, CancellationToken cancellationToken)
         {
+            logger.LogInformation("Cancelando cita con ID: {CitaId}", request.Id);
+
             var cita = await repositorio.ObtenerPorId(request.Id);
 
             if (cita is null)
-            {
-                throw new ExcepcionNoEncontrado();
-            }
+                return Result.Failure(DomainErrors.Cita.NoEncontrada);
 
-            cita.Cancelar();
+            var cancelarResult = cita.Cancelar();
+            if (cancelarResult.IsFailure)
+                return cancelarResult;
 
-            try
-            {
-                await repositorio.Actualizar(cita);
-                await unidadDeTrabajo.Persistir();
-            }
-            catch (Exception)
-            {
-                await unidadDeTrabajo.Reversar();
-                throw;
-            }
+            await repositorio.Actualizar(cita);
+            await unidadDeTrabajo.Persistir();
+
+            logger.LogInformation("Cita cancelada correctamente con ID: {CitaId}", request.Id);
+
+            return Result.Success();
+
         }
     }
 }

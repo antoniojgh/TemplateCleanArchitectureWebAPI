@@ -20,8 +20,6 @@ namespace DientesLimpios.Dominio.Entidades
             Nombre = nombre;
             Email = email;
         }
-
-
         public static Result<Dentista> Crear(string nombre, string email)
         {
             if (string.IsNullOrWhiteSpace(nombre))
@@ -33,8 +31,6 @@ namespace DientesLimpios.Dominio.Entidades
 
             return Result.Success(new Dentista(nombre, emailResult.Value));
         }
-
-
         public Result ActualizarNombre(string nombre)
         {
             if (string.IsNullOrWhiteSpace(nombre))
@@ -43,7 +39,6 @@ namespace DientesLimpios.Dominio.Entidades
             Nombre = nombre;
             return Result.Success();
         }
-
         public Result ActualizarEmail(string email)
         {
             var emailResult = Email.Crear(email);

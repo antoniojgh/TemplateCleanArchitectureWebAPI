@@ -1,30 +1,31 @@
-﻿using DientesLimpios.Aplicacion.CasosdeUso.Pacientes.Comandos.CrearPaciente;
-using DientesLimpios.Aplicacion.Interfaces.Persistencia;
+﻿using DientesLimpios.Aplicacion.Interfaces.Persistencia;
 using DientesLimpios.Aplicacion.Interfaces.Repositorios;
-using DientesLimpios.Dominio.Entidades;
-using DientesLimpios.Dominio.ObjetosDeValor;
 using DientesLimpios.Aplicacion.Utilidades.Mediador;
+using DientesLimpios.Dominio.Comunes.PatronResultados;
+using DientesLimpios.Dominio.Entidades;
+using Microsoft.Extensions.Logging;
 
 namespace DientesLimpios.Aplicacion.CasosdeUso.Dentistas.Comandos.CrearDentista
 {
-    public class HandlerCrearDentista(IRepositorioDentistas repositorio, IUnitOfwork unidadDeTrabajo) : IRequestHandler<ComandoCrearDentista, Guid>
+    public class HandlerCrearDentista(IRepositorioDentistas repositorio, IUnitOfwork unidadDeTrabajo, ILogger<HandlerCrearDentista> logger) : IRequestHandler<ComandoCrearDentista, Result<Guid>>
     {
-        public async Task<Guid> Handle(ComandoCrearDentista request)
+        public async Task<Result<Guid>> Handle(ComandoCrearDentista request, CancellationToken cancellationToken)
         {
-            var email = new Email(request.Email);
-            var dentista = new Dentista(request.Nombre, email);
+            logger.LogInformation("Creando dentista con Nombre {Nombre} y Email {Email}", request.Nombre, request.Email);
 
-            try
-            {
-                var respuesta = await repositorio.Agregar(dentista);
-                await unidadDeTrabajo.Persistir();
-                return respuesta.Id;
-            }
-            catch (Exception)
-            {
-                await unidadDeTrabajo.Reversar();
-                throw;
-            }
+            var dentistaResult = Dentista.Crear(request.Nombre, request.Email);
+
+            if (dentistaResult.IsFailure)
+                return Result.Failure<Guid>(dentistaResult.Error);
+
+            var dentista = dentistaResult.Value;
+
+            await repositorio.Agregar(dentista);
+            await unidadDeTrabajo.Persistir();
+
+            logger.LogInformation("Dentista creado correctamente con ID: {DentistaId}", dentista.Id);
+
+            return Result.Success(dentista.Id);
         }
     }
 }

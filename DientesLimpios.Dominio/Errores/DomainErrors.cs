@@ -43,10 +43,6 @@ namespace DientesLimpios.Dominio.Errores
             public static readonly Error NombreObligatorio = new(
                 "Paciente.NombreObligatorio",
                 "El nombre del paciente es obligatorio.");
-
-            public static readonly Error EmailObligatorio = new(
-                "Paciente.EmailObligatorio",
-                "El email del paciente es obligatorio.");
         }
 
         public static class Dentista
@@ -58,10 +54,6 @@ namespace DientesLimpios.Dominio.Errores
             public static readonly Error NombreObligatorio = new(
                 "Dentista.NombreObligatorio",
                 "El nombre del dentista es obligatorio.");
-
-            public static readonly Error EmailObligatorio = new(
-                "Dentista.EmailObligatorio",
-                "El email del dentista es obligatorio.");
         }
 
         public static class Consultorio

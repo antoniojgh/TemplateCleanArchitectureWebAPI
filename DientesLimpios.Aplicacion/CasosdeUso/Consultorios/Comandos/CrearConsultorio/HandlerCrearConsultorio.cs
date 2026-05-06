@@ -1,31 +1,32 @@
 ﻿using DientesLimpios.Aplicacion.Interfaces.Persistencia;
 using DientesLimpios.Aplicacion.Interfaces.Repositorios;
-using DientesLimpios.Dominio.Entidades;
 using DientesLimpios.Aplicacion.Utilidades.Mediador;
+using DientesLimpios.Dominio.Comunes.PatronResultados;
+using DientesLimpios.Dominio.Entidades;
+using Microsoft.Extensions.Logging;
 
 namespace DientesLimpios.Aplicacion.CasosdeUso.Consultorios.Comandos.CrearConsultorio
 {
-    public class HandlerCrearConsultorio(IRepositorioConsultorios repositorio, IUnitOfwork unidadDeTrabajo) : IRequestHandler<ComandoCrearConsultorio, Guid>
+    public class HandlerCrearConsultorio(IRepositorioConsultorios repositorio, IUnitOfwork unidadDeTrabajo, ILogger<HandlerCrearConsultorio> logger) : IRequestHandler<ComandoCrearConsultorio, Result<Guid>>
     {
-        // Note: IValidator is NO LONGER injected here. The Behavior handles it.
-        public async Task<Guid> Handle(ComandoCrearConsultorio request)
+        public async Task<Result<Guid>> Handle(ComandoCrearConsultorio request, CancellationToken cancellationToken)
         {
-            // --- Validation Code Removed ---
-            // It is now executed automatically before this method is ever called.
+            logger.LogInformation("Creando consultorio con nombre: {Nombre}", request.Nombre);
 
-            var consultorio = new Consultorio(request.Nombre);
+            var consultorioResult = Consultorio.Crear(request.Nombre);
 
-            try
-            {
-                var respuesta = await repositorio.Agregar(consultorio);
-                await unidadDeTrabajo.Persistir();
-                return respuesta.Id;
-            }
-            catch (Exception)
-            {
-                await unidadDeTrabajo.Reversar();
-                throw;
-            }
+            if (consultorioResult.IsFailure)
+                return Result.Failure<Guid>(consultorioResult.Error);
+
+            var consultorio = consultorioResult.Value;
+
+            var respuesta = await repositorio.Agregar(consultorio);
+            await unidadDeTrabajo.Persistir();
+
+            logger.LogInformation("Consultorio creado correctamente con nombre: {Nombre}", request.Nombre);
+
+            return Result.Success(respuesta.Id);
+
         }
     }
 }

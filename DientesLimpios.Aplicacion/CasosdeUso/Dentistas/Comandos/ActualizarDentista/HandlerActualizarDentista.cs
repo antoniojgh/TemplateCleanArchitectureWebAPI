@@ -1,36 +1,37 @@
-﻿using DientesLimpios.Aplicacion.Excepciones;
-using DientesLimpios.Aplicacion.Interfaces.Persistencia;
+﻿using DientesLimpios.Aplicacion.Interfaces.Persistencia;
 using DientesLimpios.Aplicacion.Interfaces.Repositorios;
-using DientesLimpios.Dominio.ObjetosDeValor;
 using DientesLimpios.Aplicacion.Utilidades.Mediador;
+using DientesLimpios.Dominio.Comunes.PatronResultados;
+using DientesLimpios.Dominio.Errores;
+using Microsoft.Extensions.Logging;
 
 namespace DientesLimpios.Aplicacion.CasosdeUso.Dentistas.Comandos.ActualizarDentista
 {
-    public class HandlerActualizarDentista(IRepositorioDentistas repositorio, IUnitOfwork unidadDeTrabajo) : IRequestHandler<ComandoActualizarDentista>
+    public class HandlerActualizarDentista(IRepositorioDentistas repositorio, IUnitOfwork unidadDeTrabajo, ILogger<HandlerActualizarDentista> logger) : IRequestHandler<ComandoActualizarDentista, Result>
     {
-        public async Task Handle(ComandoActualizarDentista request)
+        public async Task<Result> Handle(ComandoActualizarDentista request, CancellationToken cancellationToken)
         {
+            logger.LogInformation("Actualizando dentista con ID: {DentistaId}", request.Id);
+
             var dentista = await repositorio.ObtenerPorId(request.Id);
 
             if (dentista is null)
-            {
-                throw new ExcepcionNoEncontrado();
-            }
+                return Result.Failure(DomainErrors.Dentista.NoEncontrado);
 
-            dentista.ActualizarNombre(request.Nombre);
-            var email = new Email(request.Email);
-            dentista.ActualizarEmail(email);
+            var actualizarNombreResult = dentista.ActualizarNombre(request.Nombre);
+            if (actualizarNombreResult.IsFailure)
+                return actualizarNombreResult;
 
-            try
-            {
-                await repositorio.Actualizar(dentista);
-                await unidadDeTrabajo.Persistir();
-            }
-            catch (Exception)
-            {
-                await unidadDeTrabajo.Reversar();
-                throw;
-            }
+            var actualizarEmailResult = dentista.ActualizarEmail(request.Email);
+            if (actualizarEmailResult.IsFailure)
+                return actualizarEmailResult;
+
+            await repositorio.Actualizar(dentista);
+            await unidadDeTrabajo.Persistir();
+
+            logger.LogInformation("Dentista actualizado correctamente con ID: {DentistaId}", request.Id);
+
+            return Result.Success();
         }
     }
 }

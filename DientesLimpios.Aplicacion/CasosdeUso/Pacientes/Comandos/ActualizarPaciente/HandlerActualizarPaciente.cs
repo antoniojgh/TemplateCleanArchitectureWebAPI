@@ -1,36 +1,38 @@
-﻿using DientesLimpios.Aplicacion.Excepciones;
-using DientesLimpios.Aplicacion.Interfaces.Persistencia;
+﻿using DientesLimpios.Aplicacion.Interfaces.Persistencia;
 using DientesLimpios.Aplicacion.Interfaces.Repositorios;
 using DientesLimpios.Aplicacion.Utilidades.Mediador;
-using DientesLimpios.Dominio.ObjetosDeValor;
+using DientesLimpios.Dominio.Comunes.PatronResultados;
+using DientesLimpios.Dominio.Errores;
+using Microsoft.Extensions.Logging;
 
 namespace DientesLimpios.Aplicacion.CasosdeUso.Pacientes.Comandos.ActualizarPaciente
 {
-    public class HandlerActualizarPaciente(IRepositorioPacientes repositorio, IUnitOfwork unidadDeTrabajo) : IRequestHandler<ComandoActualizarPaciente>
+    public class HandlerActualizarPaciente(IRepositorioPacientes repositorio, IUnitOfwork unidadDeTrabajo, ILogger<HandlerActualizarPaciente> logger) : IRequestHandler<ComandoActualizarPaciente, Result>
     {
-        public async Task Handle(ComandoActualizarPaciente request)
+        public async Task<Result> Handle(ComandoActualizarPaciente request, CancellationToken cancellationToken)
         {
+            logger.LogInformation("Actualizando paciente con ID: {PacienteId}", request.Id);
+
             var paciente = await repositorio.ObtenerPorId(request.Id);
 
             if (paciente is null)
-            {
-                throw new ExcepcionNoEncontrado();
-            }
+                return Result.Failure(DomainErrors.Paciente.NoEncontrado);
 
-            paciente.ActualizarNombre(request.Nombre);
-            var email = new Email(request.Email);
-            paciente.ActualizarEmail(email);
+            var actualizarNombreResult = paciente.ActualizarNombre(request.Nombre);
+            if (actualizarNombreResult.IsFailure)
+                return actualizarNombreResult;
 
-            try
-            {
-                await repositorio.Actualizar(paciente);
-                await unidadDeTrabajo.Persistir();
-            }
-            catch (Exception)
-            {
-                await unidadDeTrabajo.Reversar();
-                throw;
-            }
+            var actualizarEmailResult = paciente.ActualizarEmail(request.Email);
+            if (actualizarEmailResult.IsFailure)
+                return actualizarEmailResult;
+
+            await repositorio.Actualizar(paciente);
+            await unidadDeTrabajo.Persistir();
+
+            logger.LogInformation("Paciente actualizado correctamente con ID: {PacienteId}", request.Id);
+
+            return Result.Success();
+
         }
     }
 }

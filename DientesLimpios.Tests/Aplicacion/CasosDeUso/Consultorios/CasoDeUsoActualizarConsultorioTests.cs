@@ -1,14 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using DientesLimpios.Aplicacion.CasosdeUso.Consultorios.Comandos.ActualizarConsultorio;
-using DientesLimpios.Aplicacion.CasosdeUso.Consultorios.Comandos.CrearConsultorio;
+﻿using DientesLimpios.Aplicacion.CasosdeUso.Consultorios.Comandos.ActualizarConsultorio;
+using DientesLimpios.Aplicacion.CasosdeUso.Consultorios.Comandos.BorrarConsultorio;
 using DientesLimpios.Aplicacion.Excepciones;
 using DientesLimpios.Aplicacion.Interfaces.Persistencia;
 using DientesLimpios.Aplicacion.Interfaces.Repositorios;
+using DientesLimpios.Dominio.Comunes.PatronResultados;
 using DientesLimpios.Dominio.Entidades;
+using DientesLimpios.Dominio.Errores;
 using FluentAssertions;
 using FluentValidation.TestHelper;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using NSubstitute.ReturnsExtensions;
@@ -21,15 +21,17 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Consultorios
         private readonly IUnitOfwork _unidadDeTrabajo;
         private readonly HandlerActualizarConsultorio _handler;
         private readonly ValidadorComandoActualizarConsultorio _validator;
+        private readonly ILogger<HandlerActualizarConsultorio> _logger;
 
 
         public CasoDeUsoActualizarConsultorioTests()
         {
             _repositorio = Substitute.For<IRepositorioConsultorios>();
-            _validator = new ValidadorComandoActualizarConsultorio();
             _unidadDeTrabajo = Substitute.For<IUnitOfwork>();
+            _logger = Substitute.For<ILogger<HandlerActualizarConsultorio>>();
+            _validator = new ValidadorComandoActualizarConsultorio();
 
-            _handler = new HandlerActualizarConsultorio(_repositorio, _unidadDeTrabajo);
+            _handler = new HandlerActualizarConsultorio(_repositorio, _unidadDeTrabajo, _logger);
         }
 
         // Primero hacemos las pruebas propias del Handler:
@@ -37,57 +39,54 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Consultorios
         [Fact]
         public async Task Handle_CuandoConsultorioExiste_ActualizaNombreYPersiste()
         {
-            var consultorio = new Consultorio("Consultorio A");
+            // Arrange
+            var consultorioResult = Consultorio.Crear("Consultorio A");
+            var consultorio = consultorioResult.Value;
+
             var id = consultorio.Id;
             var comando = new ComandoActualizarConsultorio { Id = id, Nombre = "Nuevo nombre" };
 
             _repositorio.ObtenerPorId(id).Returns(consultorio);
 
-            await _handler.Handle(comando);
+            // Act
+            var result = await _handler.Handle(comando, CancellationToken.None);
 
+            // Assert
+            result.IsSuccess.Should().BeTrue();
             await _repositorio.Received(1).Actualizar(consultorio);
             await _unidadDeTrabajo.Received(1).Persistir();
 
         }
 
         [Fact]
-        public async Task Handle_CuandoConsultorioNoExiste_LanzaExcepcionNoEncontrado()
+        public async Task Handle_CuandoConsultorioNoExiste_RetornaFailureNoEncontrado()
         {
+            // Arrange
             var comando = new ComandoActualizarConsultorio { Id = Guid.NewGuid(), Nombre = "Nombre" };
             _repositorio.ObtenerPorId(comando.Id).ReturnsNull();
 
-            Func<Task> act = async () => await _handler.Handle(comando);
+            // Act
+            var result = await _handler.Handle(comando, CancellationToken.None);
 
             // Assert
-            // Verify it throws the specific exception
-            await act.Should().ThrowAsync<ExcepcionNoEncontrado>();
-        }
-
-        [Fact]
-        public async Task Handle_CuandoOcurreExcepcionAlActualizar_LlamaAReversarYLanzaExcepcion()
-        {
-            var consultorio = new Consultorio("Consultorio A");
-            var id = consultorio.Id;
-            var comando = new ComandoActualizarConsultorio { Id = id, Nombre = "Consultorio B" };
-
-            _repositorio.ObtenerPorId(id).Returns(consultorio);
-            _repositorio.Actualizar(consultorio).Throws((new InvalidOperationException("Error al actualizar")));
-
-            Func<Task> act = async () => await _handler.Handle(comando);
-
-            await act.Should().ThrowAsync<InvalidOperationException>();
-            await _unidadDeTrabajo.Received(1).Reversar();
+            result.IsFailure.Should().BeTrue();
+            result.Error.Should().Be(DomainErrors.Consultorio.NoEncontrado);
+            await _repositorio.DidNotReceive().Actualizar(Arg.Any<Consultorio>());
+            await _unidadDeTrabajo.DidNotReceive().Persistir();
         }
 
         // Luego hacemos las pruebas propias de la validacion, ya que el validador
         // es un componente externo al handler, ya no validamos dentro del Handler sino que lo hacemos medieante
         // un validador externo que se inyecta en el handler mediante la clase "ValidationBehavior"
 
-        [Fact]
-        public async Task Validador_NoValido()
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        public async Task Validador_NombreVacio_GeneraErrorDeValidacion(string? nombre)
         {
             // Arrange
-            var comando = new ComandoActualizarConsultorio { Id = Guid.NewGuid(), Nombre = "" };
+            var comando = new ComandoActualizarConsultorio { Id = Guid.NewGuid(), Nombre = nombre! };
 
             // Act
             var result = _validator.TestValidate(comando);
@@ -97,7 +96,7 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Consultorios
         }
 
         [Fact]
-        public void Validador_Valido()
+        public void Validador_NombreValido_NoGeneraErrorDeValidacion()
         {
             // Arrange
             var comando = new ComandoActualizarConsultorio { Id = Guid.NewGuid(), Nombre = "Consultorio Central" };

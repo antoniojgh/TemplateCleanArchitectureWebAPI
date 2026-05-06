@@ -1,12 +1,12 @@
 ﻿using DientesLimpios.Aplicacion.CasosdeUso.Consultorios.Comandos.BorrarConsultorio;
-using DientesLimpios.Aplicacion.Excepciones;
 using DientesLimpios.Aplicacion.Interfaces.Persistencia;
 using DientesLimpios.Aplicacion.Interfaces.Repositorios;
 using DientesLimpios.Dominio.Entidades;
+using DientesLimpios.Dominio.Errores;
 using FluentAssertions;
 using FluentValidation.TestHelper;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
-using NSubstitute.ExceptionExtensions;
 using NSubstitute.ReturnsExtensions;
 
 namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Consultorios
@@ -17,14 +17,16 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Consultorios
         private readonly IUnitOfwork _unidadDeTrabajo;
         private readonly HandlerBorrarConsultorio _handler;
         private readonly ValidadorComandoBorrarConsultorio _validator;
+        private readonly ILogger<HandlerBorrarConsultorio> _logger;
 
         public CasoDeUsoBorrarConsultorioTests()
         {
             _repositorio = Substitute.For<IRepositorioConsultorios>();
-            _validator = new ValidadorComandoBorrarConsultorio();
             _unidadDeTrabajo = Substitute.For<IUnitOfwork>();
+            _logger = Substitute.For<ILogger<HandlerBorrarConsultorio>>();
+            _validator = new ValidadorComandoBorrarConsultorio();
 
-            _handler = new HandlerBorrarConsultorio(_repositorio, _unidadDeTrabajo);
+            _handler = new HandlerBorrarConsultorio(_repositorio, _unidadDeTrabajo, _logger);
         }
 
         // Primero hacemos las pruebas propias del Handler:
@@ -32,47 +34,39 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Consultorios
         [Fact]
         public async Task Handle_CuandoConsultorioExiste_BorraConsultorioYPersiste()
         {
+            // Arrange
             var id = Guid.NewGuid();
             var comando = new ComandoBorrarConsultorio { Id = id };
-            var consultorio = new Consultorio("Consultorio A");
+
+            var consultorioResult = Consultorio.Crear("Consultorio A");
+            var consultorio = consultorioResult.Value;
 
             _repositorio.ObtenerPorId(id).Returns(consultorio);
 
-            await _handler.Handle(comando);
+            // Act
+            var result = await _handler.Handle(comando, CancellationToken.None);
 
+            // Assert
+            result.IsSuccess.Should().BeTrue();
             await _repositorio.Received(1).Borrar(consultorio);
             await _unidadDeTrabajo.Received(1).Persistir();
-
         }
 
         [Fact]
-        public async Task Handle_CuandoConsultorioNoExiste_LanzaExcepcionNoEncontrado()
+        public async Task Handle_CuandoConsultorioNoExiste_RetornaFailureNoEncontrado()
         {
+            // Arrange
             var comando = new ComandoBorrarConsultorio { Id = Guid.NewGuid() };
             _repositorio.ObtenerPorId(comando.Id).ReturnsNull();
 
-            Func<Task> act = async () => await _handler.Handle(comando);
+            // Act
+            var result = await _handler.Handle(comando, CancellationToken.None);
 
             // Assert
-            // Verify it throws the specific exception
-            await act.Should().ThrowAsync<ExcepcionNoEncontrado>();
-        }
-
-        [Fact]
-        public async Task Handle_CuandoOcurreExcepcion_LlamaAReversarYLanzaExcepcion()
-        {
-            var id = Guid.NewGuid();
-            var comando = new ComandoBorrarConsultorio { Id = id };
-            var consultorio = new Consultorio("Consultorio A");
-
-            _repositorio.ObtenerPorId(id).Returns(consultorio);
-
-            _repositorio.Borrar(consultorio).Throws((new InvalidOperationException("Fallo al borrar")));
-
-            Func<Task> act = async () => await _handler.Handle(comando);
-
-            await act.Should().ThrowAsync<InvalidOperationException>();
-            await _unidadDeTrabajo.Received(1).Reversar();
+            result.IsFailure.Should().BeTrue();
+            result.Error.Should().Be(DomainErrors.Consultorio.NoEncontrado);
+            await _repositorio.DidNotReceive().Borrar(Arg.Any<Consultorio>());
+            await _unidadDeTrabajo.DidNotReceive().Persistir();
         }
 
 
@@ -81,7 +75,7 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Consultorios
         // un validador externo que se inyecta en el handler mediante la clase "ValidationBehavior"
 
         [Fact]
-        public async Task Validador_NoValido()
+        public void Validar_IdVacio_GeneraErrorDeValidacion()
         {
             // Arrange
             var comando = new ComandoBorrarConsultorio { Id = Guid.Empty};
@@ -94,7 +88,7 @@ namespace DientesLimpios.Tests.Aplicacion.CasosDeUso.Consultorios
         }
 
         [Fact]
-        public void Validador_Valido()
+        public void Validar_IdValido_NoGeneraErrorDeValidacion()
         {
             // Arrange
             var comando = new ComandoBorrarConsultorio { Id = Guid.NewGuid()};
