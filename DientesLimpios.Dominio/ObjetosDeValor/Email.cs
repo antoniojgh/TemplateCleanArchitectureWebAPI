@@ -3,9 +3,9 @@ using DientesLimpios.Dominio.Errores;
 
 namespace DientesLimpios.Dominio.ObjetosDeValor
 {
-    public record Email
+    public sealed record Email
     {
-        public string Valor { get; } = null!;
+        public string Valor { get; private init; } = null!;
 
         private Email() { }   // EF Core
 

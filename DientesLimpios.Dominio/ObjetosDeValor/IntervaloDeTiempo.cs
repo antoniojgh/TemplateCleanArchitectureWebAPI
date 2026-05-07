@@ -1,13 +1,12 @@
 ﻿using DientesLimpios.Dominio.Comunes.PatronResultados;
 using DientesLimpios.Dominio.Errores;
-using DientesLimpios.Dominio.Excepciones;
 
 namespace DientesLimpios.Dominio.ObjetosDeValor
 {
-    public record IntervaloDeTiempo
+    public sealed record IntervaloDeTiempo
     {
-        public DateTime Inicio { get; }
-        public DateTime Fin { get; }
+        public DateTime Inicio { get; private init; }
+        public DateTime Fin { get; private init; }
 
         private IntervaloDeTiempo() { }   // EF Core
 
