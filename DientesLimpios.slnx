@@ -15,4 +15,8 @@
     <Project Path="DientesLimpios.ArchitectureTests/DientesLimpios.ArchitectureTests.csproj" Id="e73d9872-5f39-4c57-84f5-6f6795b3f5a6" />
     <Project Path="DientesLimpios.Tests/DientesLimpios.Tests.csproj" />
   </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path="Directory.Build.props" />
+  </Folder>
 </Solution>

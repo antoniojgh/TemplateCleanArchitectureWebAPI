@@ -1,0 +1,25 @@
+root = true
+ 
+[*.cs]
+# These analyzer rules fire frequently with low signal in a typical .NET 10 codebase.
+# Keep them visible as suggestions, but don't fail the build on them.
+ 
+dotnet_diagnostic.CA1062.severity = suggestion   # Validate arguments of public methods (noisy for DTOs / handlers)
+dotnet_diagnostic.CA1812.severity = suggestion   # Avoid uninstantiated internal classes (fires on EF Core entities, FluentValidation validators discovered by reflection)
+dotnet_diagnostic.CA1515.severity = suggestion   # Types can be made internal (would force a wide review of public API)
+dotnet_diagnostic.CA1707.severity = suggestion   # Identifiers should not contain underscores
+dotnet_diagnostic.CS1591.severity = none         # Missing XML doc comment (only meaningful for public NuGet packages)
+dotnet_diagnostic.CA1002.severity = suggestion   # Do not expose generic List<T> (your DTOs intentionally do)
+dotnet_diagnostic.CA2227.severity = suggestion   # Collection properties should be read only (same reason — DTOs)
+dotnet_diagnostic.CA1716.severity = none		 # Reserved keywords in other languages — not relevant for an internal C#-only solution
+dotnet_diagnostic.CA2225.severity = none		 # Operator named alternates — implicit conversions are intentional for Result pattern ergonomics
+dotnet_diagnostic.CA1008.severity = none		 # Enum default-initialization is prevented by factory-based entity construction (Cita.Crear, Paciente.Crear, etc.)
+dotnet_diagnostic.CA1034.severity = none		 # Nested static classes in DomainErrors are an intentional grouping mechanism for the Result pattern (DomainErrors.Cita.Solapada reads as a sentence).
+
+ 
+# Test code — relax further
+[**/*Tests/**.cs]
+dotnet_diagnostic.CA1707.severity = none         # Underscore-separated test method names are conventional
+dotnet_diagnostic.CA1822.severity = none         # Mark members as static (per-test arrange methods)
+dotnet_diagnostic.CA2007.severity = none         # ConfigureAwait (not relevant in test code)
+dotnet_diagnostic.CA1515.severity = none         # Tests are intentionally public
