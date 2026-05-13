@@ -1,11 +1,11 @@
 using Asp.Versioning;
 using DientesLimpios.API.ExceptionHandlers;
 using DientesLimpios.API.Jobs;
-using DientesLimpios.Aplicacion;
-using DientesLimpios.Identidad;
-using DientesLimpios.Identidad.Modelos;
-using DientesLimpios.Infraestructura;
-using DientesLimpios.Persistencia;
+using DientesLimpios.Application;
+using DientesLimpios.Identity;
+using DientesLimpios.Identity.Models;
+using DientesLimpios.Infrastructure;
+using DientesLimpios.Persistence;
 using Microsoft.AspNetCore.Mvc.Authorization;
 using Serilog;
 
@@ -30,18 +30,18 @@ try
 
     builder.Services.AddControllers(opciones =>
     {
-        // Agregar un filtro global de autorización para proteger todos los endpoints por defecto
+        // Add un filter global de autorización para proteger todos los endpoints por defecto
         opciones.Filters.Add(new AuthorizeFilter("esadmin"));
     });
 
-    // Inyección de dependencias de la capa de Aplicación, Persistencia e Infraestructura
-    builder.Services.AgregarServiciosDeAplicacion();
-    builder.Services.AgregarServiciosDePersistencia();
-    builder.Services.AgregarServiciosDeInfraestructura();
-    builder.Services.AgregarServiciosDeIdentidad();
+    // Inyección de dependencias de la capa de Aplicación, Persistence e Infrastructure
+    builder.Services.AgregarServicesDeApplication();
+    builder.Services.AgregarServicesDePersistence();
+    builder.Services.AgregarServicesDeInfrastructure();
+    builder.Services.AgregarServicesDeIdentity();
 
-    // Agregar el servicio de trabajo en segundo plano para el recordatorio de citas
-    builder.Services.AddHostedService<RecordatorioCitasJob>();
+    // Add el servicio de trabajo en segundo plano para el recordatorio de appointments
+    builder.Services.AddHostedService<AppointmentReminderJob>();
 
     // Configuración de versionado de API
     builder.Services.AddApiVersioning(options =>
@@ -56,7 +56,7 @@ try
         // 3. Report the supported versions in the HTTP response headers (api-supported-versions)
         options.ReportApiVersions = true;
 
-        // 4. Read the version from the URL (e.g., /api/v1/citas)
+        // 4. Read the version from the URL (e.g., /api/v1/appointments)
         // You can also configure it to read from Header or QueryString here if preferred.
         options.ApiVersionReader = new UrlSegmentApiVersionReader();
     })
@@ -74,7 +74,7 @@ try
     // Add Request Logging Middleware
     app.UseSerilogRequestLogging();
 
-    app.MapIdentityApi<Usuario>();
+    app.MapIdentityApi<User>();
 
     app.UseExceptionHandler();
 

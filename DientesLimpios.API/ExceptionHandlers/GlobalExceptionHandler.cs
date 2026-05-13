@@ -1,5 +1,5 @@
-﻿using DientesLimpios.Aplicacion.Excepciones;
-using DientesLimpios.Dominio.Excepciones;
+﻿using DientesLimpios.Application.Exceptions;
+using DientesLimpios.Domain.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,10 +17,10 @@ namespace DientesLimpios.API.ExceptionHandlers
 
             var (status, title) = exception switch
             {
-                ExcepcionNoEncontrado => (StatusCodes.Status404NotFound, "Recurso no encontrado"),
-                ExcepcionDeValidacion => (StatusCodes.Status400BadRequest, "Validación fallida"),
-                ExcepcionDeReglaDeNegocio => (StatusCodes.Status400BadRequest, "Regla de negocio violada"),
-                ExcepcionDeMediador => (StatusCodes.Status500InternalServerError, "Error de despacho"),
+                NotFoundException => (StatusCodes.Status404NotFound, "Recurso no encontrado"),
+                ValidationException => (StatusCodes.Status400BadRequest, "Validación fallida"),
+                BusinessRuleException => (StatusCodes.Status400BadRequest, "Regla de negocio violada"),
+                MediatorException => (StatusCodes.Status500InternalServerError, "Error de despacho"),
                 _ => (StatusCodes.Status500InternalServerError, "Error interno del servidor"),
             };
 

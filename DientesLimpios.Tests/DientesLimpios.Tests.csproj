@@ -15,8 +15,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\DientesLimpios.Aplicacion\DientesLimpios.Aplicacion.csproj" />
-    <ProjectReference Include="..\DientesLimpios.Dominio\DientesLimpios.Dominio.csproj" />
+    <ProjectReference Include="..\DientesLimpios.Application\DientesLimpios.Application.csproj" />
+    <ProjectReference Include="..\DientesLimpios.Domain\DientesLimpios.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

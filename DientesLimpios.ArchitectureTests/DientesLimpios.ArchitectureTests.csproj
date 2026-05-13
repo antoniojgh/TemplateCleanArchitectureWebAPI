@@ -15,11 +15,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\DientesLimpios.Aplicacion\DientesLimpios.Aplicacion.csproj" />
-    <ProjectReference Include="..\DientesLimpios.Dominio\DientesLimpios.Dominio.csproj" />
-    <ProjectReference Include="..\DientesLimpios.Identidad\DientesLimpios.Identidad.csproj" />
-    <ProjectReference Include="..\DientesLimpios.Infraestructura\DientesLimpios.Infraestructura.csproj" />
-    <ProjectReference Include="..\DientesLimpios.Persistencia\DientesLimpios.Persistencia.csproj" />
+    <ProjectReference Include="..\DientesLimpios.Application\DientesLimpios.Application.csproj" />
+    <ProjectReference Include="..\DientesLimpios.Domain\DientesLimpios.Domain.csproj" />
+    <ProjectReference Include="..\DientesLimpios.Identity\DientesLimpios.Identity.csproj" />
+    <ProjectReference Include="..\DientesLimpios.Infrastructure\DientesLimpios.Infrastructure.csproj" />
+    <ProjectReference Include="..\DientesLimpios.Persistence\DientesLimpios.Persistence.csproj" />
   </ItemGroup>
 
   <ItemGroup>

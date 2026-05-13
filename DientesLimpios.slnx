@@ -3,15 +3,15 @@
     <Project Path="DientesLimpios.API/DientesLimpios.API.csproj" />
   </Folder>
   <Folder Name="/Core/">
-    <Project Path="DientesLimpios.Aplicacion/DientesLimpios.Aplicacion.csproj" />
-    <Project Path="DientesLimpios.Dominio/DientesLimpios.Dominio.csproj" />
+    <Project Path="DientesLimpios.Application/DientesLimpios.Application.csproj" />
+    <Project Path="DientesLimpios.Domain/DientesLimpios.Domain.csproj" />
   </Folder>
-  <Folder Name="/Infraestructura/">
-    <Project Path="DientesLimpios.Identidad/DientesLimpios.Identidad.csproj" Id="c6e17955-74ed-417f-baf1-af63a7c36e88" />
-    <Project Path="DientesLimpios.Infraestructura/DientesLimpios.Infraestructura.csproj" Id="f0718158-3337-46b6-9caa-05c3fab08966" />
-    <Project Path="DientesLimpios.Persistencia/DientesLimpios.Persistencia.csproj" />
+  <Folder Name="/Infrastructure/">
+    <Project Path="DientesLimpios.Identity/DientesLimpios.Identity.csproj" Id="c6e17955-74ed-417f-baf1-af63a7c36e88" />
+    <Project Path="DientesLimpios.Infrastructure/DientesLimpios.Infrastructure.csproj" Id="f0718158-3337-46b6-9caa-05c3fab08966" />
+    <Project Path="DientesLimpios.Persistence/DientesLimpios.Persistence.csproj" />
   </Folder>
-  <Folder Name="/Pruebas/">
+  <Folder Name="/Tests/">
     <Project Path="DientesLimpios.ArchitectureTests/DientesLimpios.ArchitectureTests.csproj" Id="e73d9872-5f39-4c57-84f5-6f6795b3f5a6" />
     <Project Path="DientesLimpios.Tests/DientesLimpios.Tests.csproj" />
   </Folder>

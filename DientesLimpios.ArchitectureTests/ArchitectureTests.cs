@@ -5,11 +5,11 @@ namespace DientesLimpios.ArchitectureTests
 {
     public class ArchitectureTests
     {
-        private const string DomainNamespace = "DientesLimpios.Dominio";
-        private const string ApplicationNamespace = "DientesLimpios.Aplicacion";
-        private const string InfraestructuraNamespace = "DientesLimpios.Infraestructura";
-        private const string IdentidadNamespace = "DientesLimpios.Identidad";
-        private const string PersistenciaNamespace = "DientesLimpios.Persistencia";
+        private const string DomainNamespace = "DientesLimpios.Domain";
+        private const string ApplicationNamespace = "DientesLimpios.Application";
+        private const string InfrastructureNamespace = "DientesLimpios.Infrastructure";
+        private const string IdentityNamespace = "DientesLimpios.Identity";
+        private const string PersistenceNamespace = "DientesLimpios.Persistence";
         private const string ApiNamespace = "DientesLimpios.API";
 
 
@@ -19,14 +19,14 @@ namespace DientesLimpios.ArchitectureTests
         public void Domain_Should_Not_HaveDependencyOnOtherProjects()
         {
             // Arrange
-            var assembly = typeof(Dominio.Entidades.Cita).Assembly;
+            var assembly = typeof(Domain.Entities.Appointment).Assembly;
 
             var otherProjects = new[]
             {
                 ApplicationNamespace,
-                InfraestructuraNamespace,
-                IdentidadNamespace,
-                PersistenciaNamespace,
+                InfrastructureNamespace,
+                IdentityNamespace,
+                PersistenceNamespace,
                 ApiNamespace
             };
 
@@ -45,13 +45,13 @@ namespace DientesLimpios.ArchitectureTests
         public void Application_Should_Not_HaveDependencyOnOutwardProjects()
         {
             // Arrange
-            var assembly = typeof(Aplicacion.Interfaces.Identidad.IServicioUsuarios).Assembly;
+            var assembly = typeof(Application.Interfaces.Identity.IUserService).Assembly;
 
             var otherProjects = new[]
             {
-                InfraestructuraNamespace,
-                IdentidadNamespace,
-                PersistenciaNamespace,
+                InfrastructureNamespace,
+                IdentityNamespace,
+                PersistenceNamespace,
                 ApiNamespace
             };
 
@@ -67,32 +67,10 @@ namespace DientesLimpios.ArchitectureTests
         }
 
         [Fact]
-        public void Infraestructure_Identidad_Should_Not_HaveDependencyOnOutwardProjects()
+        public void Infraestructure_Identity_Should_Not_HaveDependencyOnOutwardProjects()
         {
             // Arrange
-            var assembly = typeof(Identidad.Modelos.Usuario).Assembly;
-
-            var otherProjects = new[]
-            {
-                ApiNamespace
-            };
-
-            //Act
-            var testsResult = Types
-                .InAssembly(assembly)
-                .ShouldNot()
-                .HaveDependencyOnAny(otherProjects)
-                .GetResult();
-
-            // Assert
-            testsResult.IsSuccessful.Should().BeTrue();
-        }
-
-        [Fact]
-        public void Infraestructure_Infraestructura_Should_Not_HaveDependencyOnOutwardProjects()
-        {
-            // Arrange
-            var assembly = typeof(Infraestructura.Notificaciones.ServicioCorreos).Assembly;
+            var assembly = typeof(Identity.Models.User).Assembly;
 
             var otherProjects = new[]
             {
@@ -111,10 +89,32 @@ namespace DientesLimpios.ArchitectureTests
         }
 
         [Fact]
-        public void Infraestructure_Persistencia_Should_Not_HaveDependencyOnOutwardProjects()
+        public void Infraestructure_Infrastructure_Should_Not_HaveDependencyOnOutwardProjects()
         {
             // Arrange
-            var assembly = typeof(Persistencia.Configuraciones.CitaConfig).Assembly;
+            var assembly = typeof(Infrastructure.Notifications.EmailService).Assembly;
+
+            var otherProjects = new[]
+            {
+                ApiNamespace
+            };
+
+            //Act
+            var testsResult = Types
+                .InAssembly(assembly)
+                .ShouldNot()
+                .HaveDependencyOnAny(otherProjects)
+                .GetResult();
+
+            // Assert
+            testsResult.IsSuccessful.Should().BeTrue();
+        }
+
+        [Fact]
+        public void Infraestructure_Persistence_Should_Not_HaveDependencyOnOutwardProjects()
+        {
+            // Arrange
+            var assembly = typeof(Persistence.Configurations.AppointmentConfig).Assembly;
 
             var otherProjects = new[]
             {
@@ -135,7 +135,7 @@ namespace DientesLimpios.ArchitectureTests
         [Fact]
         public void Domain_Should_Not_HaveDependencyOnInfrastructureLibraries()
         {
-            var assembly = typeof(Dominio.Entidades.Cita).Assembly;
+            var assembly = typeof(Domain.Entities.Appointment).Assembly;
 
             var forbiddenLibraries = new[]
             {
@@ -154,13 +154,13 @@ namespace DientesLimpios.ArchitectureTests
         }
 
         [Fact]
-        public void Persistencia_Should_Not_HaveDependencyOn_Infraestructura()
+        public void Persistence_Should_Not_HaveDependencyOn_Infrastructure()
         {
-            var assembly = typeof(Persistencia.Configuraciones.CitaConfig).Assembly;
+            var assembly = typeof(Persistence.Configurations.AppointmentConfig).Assembly;
 
             var result = Types.InAssembly(assembly)
                 .ShouldNot()
-                .HaveDependencyOn(InfraestructuraNamespace)
+                .HaveDependencyOn(InfrastructureNamespace)
                 .GetResult();
 
             result.IsSuccessful.Should().BeTrue();
@@ -174,13 +174,13 @@ namespace DientesLimpios.ArchitectureTests
         public void Handlers_Should_Have_DependencyOnDomain()
         {
             // Arrange
-            var assembly = typeof(Aplicacion.Interfaces.Identidad.IServicioUsuarios).Assembly;
+            var assembly = typeof(Application.Interfaces.Identity.IUserService).Assembly;
 
             //Act
             var testsResult = Types
                 .InAssembly(assembly)
                 .That()
-                .HaveNameStartingWith("Handler")
+                .HaveNameEndingWith("Handler", System.StringComparison.Ordinal)
                 .Should()
                 .HaveDependencyOn(DomainNamespace)
                 .GetResult();

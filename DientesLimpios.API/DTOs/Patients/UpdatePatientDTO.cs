@@ -1,0 +1,15 @@
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace DientesLimpios.API.DTOs.Patients
+{
+    public class UpdatePatientDTO
+    {
+        [Required]
+        [StringLength(250)]
+        public required string Name { get; set; }
+        [Required]
+        [StringLength(254)]
+        [EmailAddress]
+        public required string Email { get; set; }
+    }
+}
