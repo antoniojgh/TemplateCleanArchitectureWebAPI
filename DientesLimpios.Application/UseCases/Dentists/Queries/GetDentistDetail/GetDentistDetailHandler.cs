@@ -10,14 +10,14 @@ namespace DientesLimpios.Application.UseCases.Dentists.Queries.GetDentistDetail
     {
         public async Task<Result<DentistDetailDTO>> Handle(GetDentistDetailQuery request, CancellationToken cancellationToken)
         {
-            logger.LogInformation("Obteniendo detalle de dentist con ID: {DentistId}", request.Id);
+            logger.LogInformation("Retrieving dentist detail with ID: {DentistId}", request.Id);
 
             var dentist = await repository.GetById(request.Id);
 
             if (dentist is null)
                 return Result.Failure<DentistDetailDTO>(DomainErrors.Dentist.NotFound);
 
-            logger.LogInformation("Detail de dentist obtenido correctamente con ID: {DentistId}", request.Id);
+            logger.LogInformation("Dentist detail retrieved successfully with ID: {DentistId}", request.Id);
 
             return Result.Success(dentist.ADto());
         }

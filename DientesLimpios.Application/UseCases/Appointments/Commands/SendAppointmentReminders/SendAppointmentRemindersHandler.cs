@@ -14,11 +14,11 @@ namespace DientesLimpios.Application.UseCases.Appointments.Commands.SendAppointm
     {
         public async Task<Result> Handle(SendAppointmentRemindersCommand request, CancellationToken cancellationToken)
         {
-            logger.LogInformation("Enviando recordatorio de appointments para el día: {Fecha}", DateTime.UtcNow.Date.AddDays(1));
+            logger.LogInformation("Sending appointment reminders for date: {Date}", DateTime.UtcNow.Date.AddDays(1));
 
-            var mañana = DateTime.UtcNow.Date.AddDays(1);
-            var startDate = mañana;
-            var endDate = mañana.AddDays(1);
+            var tomorrow = DateTime.UtcNow.Date.AddDays(1);
+            var startDate = tomorrow;
+            var endDate = tomorrow.AddDays(1);
 
             var filter = new AppointmentFilterDTO
             {
@@ -35,7 +35,7 @@ namespace DientesLimpios.Application.UseCases.Appointments.Commands.SendAppointm
                 await notificationService.SendAppointmentReminder(appointmentDTO);
             }
 
-            logger.LogInformation("Reminder de appointments enviado correctamente para {NumeroAppointments} appointments", appointments.Count());
+            logger.LogInformation("Appointment reminders sent successfully for {AppointmentCount} appointments", appointments.Count());
 
             return Result.Success();
         }

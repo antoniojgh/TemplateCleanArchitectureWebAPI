@@ -11,7 +11,7 @@ namespace DientesLimpios.Application.UseCases.Dentists.Commands.UpdateDentist
     {
         public async Task<Result> Handle(UpdateDentistCommand request, CancellationToken cancellationToken)
         {
-            logger.LogInformation("Actualizando dentist con ID: {DentistId}", request.Id);
+            logger.LogInformation("Updating dentist with ID: {DentistId}", request.Id);
 
             var dentist = await repository.GetById(request.Id);
 
@@ -29,7 +29,7 @@ namespace DientesLimpios.Application.UseCases.Dentists.Commands.UpdateDentist
             await repository.Update(dentist);
             await unitOfWork.SaveChanges();
 
-            logger.LogInformation("Dentist actualizado correctamente con ID: {DentistId}", request.Id);
+            logger.LogInformation("Dentist updated successfully with ID: {DentistId}", request.Id);
 
             return Result.Success();
         }

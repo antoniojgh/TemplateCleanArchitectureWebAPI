@@ -13,7 +13,7 @@ namespace DientesLimpios.Application.UseCases.Appointments.Commands.CancelAppoin
 
         public async Task<Result> Handle(CancelAppointmentCommand request, CancellationToken cancellationToken)
         {
-            logger.LogInformation("Cancelando appointment con ID: {AppointmentId}", request.Id);
+            logger.LogInformation("Cancelling appointment with ID: {AppointmentId}", request.Id);
 
             var appointment = await repository.GetById(request.Id);
 
@@ -27,7 +27,7 @@ namespace DientesLimpios.Application.UseCases.Appointments.Commands.CancelAppoin
             await repository.Update(appointment);
             await unitOfWork.SaveChanges();
 
-            logger.LogInformation("Appointment cancelada correctamente con ID: {AppointmentId}", request.Id);
+            logger.LogInformation("Appointment cancelled successfully with ID: {AppointmentId}", request.Id);
 
             return Result.Success();
 

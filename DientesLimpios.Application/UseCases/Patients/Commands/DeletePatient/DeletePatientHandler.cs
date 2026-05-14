@@ -11,7 +11,7 @@ namespace DientesLimpios.Application.UseCases.Patients.Commands.DeletePatient
     {
         public async Task<Result> Handle(DeletePatientCommand request, CancellationToken cancellationToken)
         {
-            logger.LogInformation("Borrando patient con ID: {PatientId}", request.Id);
+            logger.LogInformation("Deleting patient with ID: {PatientId}", request.Id);
 
             var patient = await repository.GetById(request.Id);
 
@@ -21,7 +21,7 @@ namespace DientesLimpios.Application.UseCases.Patients.Commands.DeletePatient
             await repository.Delete(patient);
             await unitOfWork.SaveChanges();
 
-            logger.LogInformation("Patient borrado correctamente con ID: {PatientId}", request.Id);
+            logger.LogInformation("Patient deleted successfully with ID: {PatientId}", request.Id);
 
             return Result.Success();
         }

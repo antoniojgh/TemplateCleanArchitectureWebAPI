@@ -12,7 +12,7 @@ namespace DientesLimpios.Application.UseCases.Appointments.Commands.CompleteAppo
 
         public async Task<Result> Handle(CompleteAppointmentCommand request, CancellationToken cancellationToken)
         {
-            logger.LogInformation("Completando appointment con ID: {AppointmentId}", request.Id);
+            logger.LogInformation("Completing appointment with ID: {AppointmentId}", request.Id);
 
             var appointment = await repository.GetById(request.Id);
 
@@ -26,7 +26,7 @@ namespace DientesLimpios.Application.UseCases.Appointments.Commands.CompleteAppo
             await repository.Update(appointment);
             await unitOfWork.SaveChanges();
 
-            logger.LogInformation("Appointment completada correctamente con ID: {AppointmentId}", request.Id);
+            logger.LogInformation("Appointment completed successfully with ID: {AppointmentId}", request.Id);
 
             return Result.Success();
         }

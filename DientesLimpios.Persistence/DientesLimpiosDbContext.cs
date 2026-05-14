@@ -20,18 +20,18 @@ namespace DientesLimpios.Persistence
         {
             if (_userService is not null)
             {
-                // Recorre las entidades que están siendo agregadas o modificadas y heredan de AuditableEntity
+                // Iterates over entities being added or modified that inherit from AuditableEntity
                 foreach (var entry in ChangeTracker.Entries<AuditableEntity>())
                 {
-                    // Actualiza los campos de auditoría según el status de la entidad
+                    // Updates audit fields based on the entity state
                     switch (entry.State)
                     {
-                        // Si la entidad está siendo agregada
+                        // If the entity is being added
                         case EntityState.Added:
                             entry.Entity.CreatedDate = DateTime.UtcNow;
                             entry.Entity.CreatedBy = _userService.GetUserId();
                             break;
-                        // Si la entidad está siendo modificada
+                        // If the entity is being modified
                         case EntityState.Modified:
                             entry.Entity.LastModifiedDate = DateTime.UtcNow;
                             entry.Entity.LastModifiedBy = _userService.GetUserId();
@@ -54,8 +54,8 @@ namespace DientesLimpios.Persistence
         {
             base.OnModelCreating(modelBuilder);
 
-            // Aplica todas las configuraciones de entidades en el ensamblado actual
-            // es decir, las configuraciones que están en la carpeta "Configurations"
+            // Applies all entity configurations in the current assembly
+            // i.e., the configurations located in the "Configurations" folder
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(DientesLimpiosDbContext).Assembly);
         }
 

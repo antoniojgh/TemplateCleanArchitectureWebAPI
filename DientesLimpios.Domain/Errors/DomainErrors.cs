@@ -8,81 +8,81 @@ namespace DientesLimpios.Domain.Errors
         {
             public static readonly Error NotFound = new(
                 "General.NotFound",
-                "El recurso solicitado no fue encontrado.");
+                "The requested resource was not found.");
         }
 
         public static class Appointment
         {
             public static readonly Error NotFound = new(
                 "Appointment.NotFound",
-                "La appointment especificada no fue encontrada.");
+                "The specified appointment was not found.");
 
             public static readonly Error InThePast = new(
                 "Appointment.InThePast",
-                "La fecha de start no puede ser anterior a la fecha actual.");
+                "The start date cannot be earlier than the current date.");
 
             public static readonly Error OnlyScheduledCanBeCancelled = new(
                 "Appointment.OnlyScheduledCanBeCancelled",
-                "Solo se pueden cancelar appointments programadas.");
+                "Only scheduled appointments can be cancelled.");
 
             public static readonly Error OnlyScheduledCanBeCompleted = new(
                 "Appointment.OnlyScheduledCanBeCompleted",
-                "Solo se pueden completar appointments programadas.");
+                "Only scheduled appointments can be completed.");
 
             public static readonly Error Overlapping = new(
                 "Appointment.Overlapping",
-                "El dentist ya tiene una appointment en ese horario.");
+                "The dentist already has an appointment at that time.");
         }
 
         public static class Patient
         {
             public static readonly Error NotFound = new(
                 "Patient.NotFound",
-                "El patient especificado no fue encontrado.");
+                "The specified patient was not found.");
 
             public static readonly Error NameRequired = new(
                 "Patient.NameRequired",
-                "El name del patient es obligatorio.");
+                "The patient name is required.");
         }
 
         public static class Dentist
         {
             public static readonly Error NotFound = new(
                 "Dentist.NotFound",
-                "El dentist especificado no fue encontrado.");
+                "The specified dentist was not found.");
 
             public static readonly Error NameRequired = new(
                 "Dentist.NameRequired",
-                "El name del dentist es obligatorio.");
+                "The dentist name is required.");
         }
 
         public static class Office
         {
             public static readonly Error NotFound = new(
                 "Office.NotFound",
-                "El office especificado no fue encontrado.");
+                "The specified office was not found.");
 
             public static readonly Error NameRequired = new(
                 "Office.NameRequired",
-                "El name del office es obligatorio.");
+                "The office name is required.");
         }
 
         public static class TimeInterval
         {
             public static readonly Error StartGreaterThanOrEqualToEnd = new(
                 "TimeInterval.StartGreaterThanOrEqualToEnd",
-                "La hora de start debe ser anterior a la hora de end.");
+                "The start time must be earlier than the end time.");
         }
 
         public static class Email
         {
             public static readonly Error Empty = new(
                 "Email.Empty",
-                "El email es obligatorio.");
+                "The email is required.");
 
             public static readonly Error InvalidFormat = new(
                 "Email.InvalidFormat",
-                "El email no es válido.");
+                "The email format is not valid.");
         }
     }
 

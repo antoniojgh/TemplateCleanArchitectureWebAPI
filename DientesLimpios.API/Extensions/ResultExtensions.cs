@@ -60,8 +60,8 @@ namespace DientesLimpios.API.Extensions
 
         private static string TitleFor(int status) => status switch
         {
-            StatusCodes.Status404NotFound => "Recurso no encontrado",
-            StatusCodes.Status400BadRequest => "Solicitud inválida",
+            StatusCodes.Status404NotFound => "Resource not found",
+            StatusCodes.Status400BadRequest => "Invalid request",
             _ => "Error",
         };
     }

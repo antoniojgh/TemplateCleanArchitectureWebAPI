@@ -10,22 +10,22 @@ namespace DientesLimpios.Application.UseCases.Dentists.Queries.GetDentistList
     {
         public async Task<Result<PagedDTO<DentistListDTO>>> Handle(GetDentistListQuery request, CancellationToken cancellationToken)
         {
-            logger.LogInformation("Obteniendo listado de dentists");
+            logger.LogInformation("Retrieving dentist list");
 
             var filteredDentists = await repository.GetFiltered(request);
             var totalDentists = await repository.GetTotalRecordCount();
 
             var filteredDentistsDTO = filteredDentists.Select(dentist => dentist.ADto()).ToList();
 
-            var dentistasDTO = new PagedDTO<DentistListDTO>
+            var dentistsDTO = new PagedDTO<DentistListDTO>
             {
                 Elementos = filteredDentistsDTO,
                 Total = totalDentists
             };
 
-            logger.LogInformation("List de dentists obtenido correctamente con {NumeroDentists} dentists", dentistasDTO.Elementos.Count);
+            logger.LogInformation("Dentist list retrieved successfully with {DentistCount} dentists", dentistsDTO.Elementos.Count);
 
-            return Result.Success(dentistasDTO);
+            return Result.Success(dentistsDTO);
         }
     }
 }

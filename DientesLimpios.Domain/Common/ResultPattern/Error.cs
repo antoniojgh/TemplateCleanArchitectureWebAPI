@@ -5,7 +5,7 @@
         public static readonly Error None = new(string.Empty, string.Empty);
         public static readonly Error NullValue = new(
             "Error.NullValue",
-            "El valor del resultado especificado es nulo.");
+            "The specified result value is null.");
 
         public static implicit operator string(Error error) => error.Code;
     }

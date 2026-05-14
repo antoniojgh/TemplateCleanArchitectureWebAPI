@@ -9,14 +9,14 @@ namespace DientesLimpios.Application.UseCases.Offices.Queries.GetOfficeList
     {
         public async Task<Result<List<OfficeListDTO>>> Handle(GetOfficeListQuery request, CancellationToken cancellationToken)
         {
-            logger.LogInformation("Obteniendo listado de offices");
+            logger.LogInformation("Retrieving office list");
 
             var offices = await repository.GetAll();
-            var consultoriosDTO = offices.Select(office => office.ADto()).ToList();
+            var officesDTO = offices.Select(office => office.ADto()).ToList();
 
-            logger.LogInformation("List de offices obtenido correctamente con {NumeroOffices} offices", consultoriosDTO.Count);
+            logger.LogInformation("Office list retrieved successfully with {OfficeCount} offices", officesDTO.Count);
 
-            return Result.Success(consultoriosDTO);
+            return Result.Success(officesDTO);
         }
     }
 }

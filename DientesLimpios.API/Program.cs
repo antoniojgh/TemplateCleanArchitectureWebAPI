@@ -30,20 +30,20 @@ try
 
     builder.Services.AddControllers(opciones =>
     {
-        // Add un filter global de autorización para proteger todos los endpoints por defecto
+        // Adds a global authorization filter to protect all endpoints by default
         opciones.Filters.Add(new AuthorizeFilter("esadmin"));
     });
 
-    // Inyección de dependencias de la capa de Aplicación, Persistence e Infrastructure
+    // Dependency injection for Application, Persistence and Infrastructure layers
     builder.Services.AgregarServicesDeApplication();
     builder.Services.AgregarServicesDePersistence();
-    builder.Services.AgregarServicesDeInfrastructure();
+    builder.Services.AgregarServicesDeInfrastructure(builder.Configuration);
     builder.Services.AgregarServicesDeIdentity();
 
-    // Add el servicio de trabajo en segundo plano para el recordatorio de appointments
+    // Add the background service for appointment reminders
     builder.Services.AddHostedService<AppointmentReminderJob>();
 
-    // Configuración de versionado de API
+    // API versioning configuration
     builder.Services.AddApiVersioning(options =>
     {
         // 1. Set the default version to 1.0
@@ -62,7 +62,7 @@ try
     })
     .AddMvc(); // Add MVC support for versioning
 
-    // Configuración global de manejo de excepciones
+    // Global exception handling configuration
     builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
     builder.Services.AddProblemDetails();
 

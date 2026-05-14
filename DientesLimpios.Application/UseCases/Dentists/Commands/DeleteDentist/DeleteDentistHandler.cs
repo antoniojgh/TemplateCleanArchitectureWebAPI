@@ -11,7 +11,7 @@ namespace DientesLimpios.Application.UseCases.Dentists.Commands.DeleteDentist
     {
         public async Task<Result> Handle(DeleteDentistCommand request, CancellationToken cancellationToken)
         {
-            logger.LogInformation("Borrando dentist con ID: {DentistId}", request.Id);
+            logger.LogInformation("Deleting dentist with ID: {DentistId}", request.Id);
 
             var dentist = await repository.GetById(request.Id);
 
@@ -21,7 +21,7 @@ namespace DientesLimpios.Application.UseCases.Dentists.Commands.DeleteDentist
             await repository.Delete(dentist);
             await unitOfWork.SaveChanges();
 
-            logger.LogInformation("Dentist borrado correctamente con ID: {DentistId}", request.Id);
+            logger.LogInformation("Dentist deleted successfully with ID: {DentistId}", request.Id);
 
             return Result.Success();
         }

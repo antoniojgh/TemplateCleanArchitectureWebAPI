@@ -29,7 +29,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
             _handler = new DeleteOfficeHandler(_repositorio, _unitOfWork, _logger);
         }
 
-        // Primero hacemos las pruebas propias del Handler:
+        // First we write the Handler-specific tests:
 
         [Fact]
         public async Task Handle_CuandoOfficeExiste_BorraOfficeYPersiste()

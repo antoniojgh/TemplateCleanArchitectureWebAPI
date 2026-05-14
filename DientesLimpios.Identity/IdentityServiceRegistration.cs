@@ -13,9 +13,9 @@ namespace DientesLimpios.Identity
         {
             services.AddAuthentication(IdentityConstants.BearerScheme).AddBearerToken(IdentityConstants.BearerScheme);
 
-            services.AddAuthorization(opciones =>
+            services.AddAuthorization(options =>
             {
-                opciones.AddPolicy("esadmin", politica => politica.RequireClaim("esadmin"));
+                options.AddPolicy("esadmin", policy => policy.RequireClaim("esadmin"));
             });
 
             services.AddDbContext<DientesLimpiosIdentityDbContext>(options =>

@@ -11,7 +11,7 @@ namespace DientesLimpios.Application.UseCases.Patients.Commands.CreatePatient
     {
         public async Task<Result<Guid>> Handle(CreatePatientCommand request, CancellationToken cancellationToken)
         {
-            logger.LogInformation("Creando patient con Name {Name} y Email {Email}", request.Name, request.Email);
+            logger.LogInformation("Creating patient with Name {Name} and Email {Email}", request.Name, request.Email);
 
             var patientResult = Patient.Create(request.Name, request.Email);
 
@@ -23,7 +23,7 @@ namespace DientesLimpios.Application.UseCases.Patients.Commands.CreatePatient
             await repository.Add(patient);
             await unitOfWork.SaveChanges();
 
-            logger.LogInformation("Patient creado correctamente con ID: {PatientId}", patient.Id);
+            logger.LogInformation("Patient created successfully with ID: {PatientId}", patient.Id);
 
             return Result.Success(patient.Id);
 

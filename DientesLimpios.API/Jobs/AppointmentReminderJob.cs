@@ -5,28 +5,28 @@ namespace DientesLimpios.API.Jobs
 {
     public class AppointmentReminderJob(IServiceScopeFactory scopeFactory, ILogger<AppointmentReminderJob> logger) : BackgroundService
     {
-        // Zona horaria de República Dominicana (Eastern Standard Time)
-        private readonly TimeZoneInfo zonaHorariaRD = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
+        // Dominican Republic timezone (Eastern Standard Time)
+        private readonly TimeZoneInfo _dominicanRepublicTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             logger.LogInformation("AppointmentReminderJob started. Waiting for 8:00 AM EST trigger.");
 
-            // Mientras no se solicite la cancelación del token
+            // While cancellation has not been requested
             while (!stoppingToken.IsCancellationRequested)
             {
-                var ahora = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, zonaHorariaRD);
+                var now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _dominicanRepublicTimeZone);
 
-                // Si son las 8 AM en República Dominicana
-                if (ahora.Hour == 8)
+                // If it is 8 AM in the Dominican Republic
+                if (now.Hour == 8)
                 {
-                    logger.LogInformation("Triggering daily appointment reminders at {Time}", ahora);
+                    logger.LogInformation("Triggering daily appointment reminders at {Time}", now);
 
                     try
                     {
                         using var scope = scopeFactory.CreateScope();
                         var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
-                        await mediator.Send(new SendAppointmentRemindersCommand());
+                        await mediator.Send(new SendAppointmentRemindersCommand(), stoppingToken);
 
                         logger.LogInformation("Daily reminders command dispatched successfully.");
                     }
@@ -36,7 +36,7 @@ namespace DientesLimpios.API.Jobs
                     }
                 }
 
-                // Esperar una hora antes de volver a verificar
+                // Wait one hour before checking again
                 await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
             }
         }

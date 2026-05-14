@@ -8,21 +8,21 @@ namespace DientesLimpios.Persistence.Repositories
 {
     public class Repository<T>(DientesLimpiosDbContext context) : IRepository<T> where T : class
     {
-        public Task Update(T entidad)
+        public Task Update(T entity)
         {
-            context.Update(entidad);
+            context.Update(entity);
             return Task.CompletedTask;
         }
 
-        public Task<T> Add(T entidad)
+        public Task<T> Add(T entity)
         {
-            context.Add(entidad);
-            return Task.FromResult(entidad);
+            context.Add(entity);
+            return Task.FromResult(entity);
         }
 
-        public Task Delete(T entidad)
+        public Task Delete(T entity)
         {
-            context.Remove(entidad);
+            context.Remove(entity);
             return Task.CompletedTask;
         }
 

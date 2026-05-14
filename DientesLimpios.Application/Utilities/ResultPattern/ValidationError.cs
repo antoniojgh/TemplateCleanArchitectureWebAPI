@@ -3,5 +3,5 @@
 namespace DientesLimpios.Application.Utilities.ResultPattern
 {
     public sealed record ValidationError(Error[] Errors)
-        : Error("Validacion.General", "Han ocurrido uno o más errores de validación.");
+        : Error("Validacion.General", "One or more validation errors occurred.");
 }

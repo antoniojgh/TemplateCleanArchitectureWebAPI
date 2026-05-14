@@ -10,14 +10,14 @@ namespace DientesLimpios.Application.UseCases.Patients.Queries.GetPatientDetail
     {
         public async Task<Result<PatientDetailDTO>> Handle(GetPatientDetailQuery request, CancellationToken cancellationToken)
         {
-            logger.LogInformation("Obteniendo detalle de patient con ID: {PatientId}", request.Id);
+            logger.LogInformation("Retrieving patient detail with ID: {PatientId}", request.Id);
 
             var patient = await repository.GetById(request.Id);
 
             if (patient is null)
                 return Result.Failure<PatientDetailDTO>(DomainErrors.Patient.NotFound);
 
-            logger.LogInformation("Detail de patient obtenido correctamente con ID: {PatientId}", request.Id);
+            logger.LogInformation("Patient detail retrieved successfully with ID: {PatientId}", request.Id);
 
             return Result.Success(patient.ADto());
         }

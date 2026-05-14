@@ -11,17 +11,17 @@ namespace DientesLimpios.API.ExceptionHandlers
         public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
         {
             logger.LogError(exception,
-                "Excepción no controlada en {Method} {Path}",
+                "Unhandled exception in {Method} {Path}",
                 httpContext.Request.Method,
                 httpContext.Request.Path);
 
             var (status, title) = exception switch
             {
-                NotFoundException => (StatusCodes.Status404NotFound, "Recurso no encontrado"),
-                ValidationException => (StatusCodes.Status400BadRequest, "Validación fallida"),
-                BusinessRuleException => (StatusCodes.Status400BadRequest, "Regla de negocio violada"),
-                MediatorException => (StatusCodes.Status500InternalServerError, "Error de despacho"),
-                _ => (StatusCodes.Status500InternalServerError, "Error interno del servidor"),
+                NotFoundException => (StatusCodes.Status404NotFound, "Resource not found"),
+                ValidationException => (StatusCodes.Status400BadRequest, "Validation failed"),
+                BusinessRuleException => (StatusCodes.Status400BadRequest, "Business rule violated"),
+                MediatorException => (StatusCodes.Status500InternalServerError, "Dispatch error"),
+                _ => (StatusCodes.Status500InternalServerError, "Internal server error"),
             };
 
             var problem = new ProblemDetails

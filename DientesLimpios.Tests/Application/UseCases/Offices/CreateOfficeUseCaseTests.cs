@@ -30,7 +30,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
             _handler = new CreateOfficeHandler(_repositorio, _unitOfWork, _logger);
         }
 
-        // Primero hacemos las pruebas propias del Handler:
+        // First we write the Handler-specific tests:
 
         [Fact]
         public async Task Handle_CommandValido_CreaOfficeYRetornaSuId()
@@ -74,9 +74,9 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
         }
 
 
-        // Luego hacemos las pruebas propias de la validacion, ya que el validator
-        // es un componente externo al handler, ya no validamos dentro del Handler sino que lo hacemos medieante
-        // un validator externo que se inyecta en el handler mediante la clase "ValidationBehavior"
+        // Then we write the Validator-specific tests, since the validator
+        // is a component external to the handler; validation is no longer done inside the Handler
+        // but through an external validator injected via the "ValidationBehavior" class
 
         [Theory]
         [InlineData(null)]

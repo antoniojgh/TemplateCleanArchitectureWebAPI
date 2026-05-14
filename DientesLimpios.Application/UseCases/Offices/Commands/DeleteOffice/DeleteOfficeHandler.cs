@@ -11,7 +11,7 @@ namespace DientesLimpios.Application.UseCases.Offices.Commands.DeleteOffice
     {
         public async Task<Result> Handle(DeleteOfficeCommand request, CancellationToken cancellationToken)
         {
-            logger.LogInformation("Borrando office con ID: {OfficeId}", request.Id);
+            logger.LogInformation("Deleting office with ID: {OfficeId}", request.Id);
 
             var office = await repository.GetById(request.Id);
 
@@ -21,7 +21,7 @@ namespace DientesLimpios.Application.UseCases.Offices.Commands.DeleteOffice
             await repository.Delete(office);
             await unitOfWork.SaveChanges();
 
-            logger.LogInformation("Office borrado correctamente con ID: {OfficeId}", request.Id);
+            logger.LogInformation("Office deleted successfully with ID: {OfficeId}", request.Id);
 
             return Result.Success();
         }

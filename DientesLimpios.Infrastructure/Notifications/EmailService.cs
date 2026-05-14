@@ -2,47 +2,47 @@
 using System.Net;
 using System.Net.Mail;
 using DientesLimpios.Application.Interfaces.Notifications;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace DientesLimpios.Infrastructure.Notifications
 {
-    public class EmailService(IConfiguration configuration, ILogger<EmailService> logger) : INotificationService
+    public class EmailService(IOptions<EmailOptions> options, ILogger<EmailService> logger) : INotificationService
     {
+        private readonly EmailOptions _options = options.Value;
+
         public async Task SendAppointmentConfirmation(AppointmentConfirmationDTO appointment)
         {
-            var subject = "Confirmación de appointment - Dientes Limpios";
+            var subject = "Appointment Confirmation - Dientes Limpios";
 
             var body = $"""
-        Estimado (a) {appointment.Patient}, 
-            
-        Su appointment con el Dr (Dra.) {appointment.Dentist} ha sido programada para el {appointment.Fecha.ToString("f", new CultureInfo("es-DO"))} en el office {appointment.Office}.
+            Dear {appointment.Patient},
 
-        ¡Le esperamos!
+            Your appointment with Dr. {appointment.Dentist} has been scheduled for {appointment.Date.ToString("f", new CultureInfo("en-GB"))} at the {appointment.Office} office.
 
-        Equipo de Dientes Limpios
-        """;
+            We look forward to seeing you!
 
-            await SendMessage(appointment.Patient_Email, subject, body);
+            The Dientes Limpios Team
+            """;
 
+            await SendMessage(appointment.PatientEmail, subject, body);
         }
 
         public async Task SendAppointmentReminder(AppointmentReminderDTO appointment)
         {
-            var subject = "RECORDATORIO: Confirmación de appointment - Dientes Limpios";
+            var subject = "REMINDER: Appointment Confirmation - Dientes Limpios";
 
             var body = $"""
-            Estimado (a) {appointment.Patient}, 
-            
-            Le recordamos que tiene appointment con el Dr (Dra.) {appointment.Dentist} para el {appointment.Fecha.ToString("f", new CultureInfo("es-DO"))} en el office {appointment.Office}.
+            Dear {appointment.Patient},
 
-            ¡Le esperamos!
+            This is a reminder that you have an appointment with Dr. {appointment.Dentist} on {appointment.Date.ToString("f", new CultureInfo("en-GB"))} at the {appointment.Office} office.
 
-            Equipo de Dientes Limpios
+            We look forward to seeing you!
+
+            The Dientes Limpios Team
             """;
 
-            await SendMessage(appointment.Patient_Email, subject, body);
-
+            await SendMessage(appointment.PatientEmail, subject, body);
         }
 
         private async Task SendMessage(string recipientEmail, string subject, string body)
@@ -51,18 +51,15 @@ namespace DientesLimpios.Infrastructure.Notifications
 
             try
             {
-                var ourEmail = configuration.GetValue<string>("CONFIGURACIONES_EMAIL:EMAIL");
-                var password = configuration.GetValue<string>("CONFIGURACIONES_EMAIL:PASSWORD");
-                var host = configuration.GetValue<string>("CONFIGURACIONES_EMAIL:HOST");
-                var port = configuration.GetValue<int>("CONFIGURACIONES_EMAIL:PUERTO");
+                using var smtpClient = new SmtpClient(_options.Host, _options.Port)
+                {
+                    EnableSsl = true,
+                    UseDefaultCredentials = false,
+                    Credentials = new NetworkCredential(_options.Email, _options.Password),
+                };
 
-                var smtpClient = new SmtpClient(host, port);
-                smtpClient.EnableSsl = true;
-                smtpClient.UseDefaultCredentials = false;
-                smtpClient.Credentials = new NetworkCredential(ourEmail, password);
-
-                var mensaje = new MailMessage(ourEmail!, recipientEmail, subject, body);
-                await smtpClient.SendMailAsync(mensaje);
+                using var message = new MailMessage(_options.Email, recipientEmail, subject, body);
+                await smtpClient.SendMailAsync(message);
 
                 logger.LogInformation("Email sent successfully to {Recipient}", recipientEmail);
             }

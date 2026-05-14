@@ -4,10 +4,10 @@
     {
         public MediatorException() { }
 
-        public MediatorException(string mensaje) : base(mensaje) { }
+        public MediatorException(string message) : base(message) { }
 
-        public MediatorException(string mensaje, Exception innerException)
-            : base(mensaje, innerException) { }
+        public MediatorException(string message, Exception innerException)
+            : base(message, innerException) { }
 
     }
 }

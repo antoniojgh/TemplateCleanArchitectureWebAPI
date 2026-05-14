@@ -4,11 +4,11 @@ namespace DientesLimpios.Application.Exceptions
 {
     public class ValidationException: Exception
     {
-        public List<string> ErrorsDeValidacion { get; set; } = new List<string>();
+        public List<string> ValidationErrors { get; set; } = new List<string>();
 
-        public ValidationException(string mensajeDeError) : base(mensajeDeError)
+        public ValidationException(string errorMessage) : base(errorMessage)
         {
-            ErrorsDeValidacion.Add(mensajeDeError);
+            ValidationErrors.Add(errorMessage);
         }
 
 
@@ -16,9 +16,9 @@ namespace DientesLimpios.Application.Exceptions
         public ValidationException(ValidationResult validationResult)
             : base(string.Join("; ", validationResult.Errors.Select(e => e.ErrorMessage)))
         {
-            foreach (var errorDeValidacion in validationResult.Errors)
+            foreach (var validationError in validationResult.Errors)
             {
-                ErrorsDeValidacion.Add(errorDeValidacion.ErrorMessage);
+                ValidationErrors.Add(validationError.ErrorMessage);
             }
         }
     }

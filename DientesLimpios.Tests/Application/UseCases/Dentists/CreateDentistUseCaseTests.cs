@@ -20,9 +20,9 @@ namespace DientesLimpios.Tests.Application.UseCases.Dentists
 
         public CreateDentistUseCaseTests()
         {
-            // Aquí deberías inicializar los mocks o stubs necesarios para las pruebas
-            // Por ejemplo, podrías usar Moq para crear un mock de IPatientRepository
-            // y IUnitOfWork, y luego pasarlos al handler y al validator.
+            // Here you should initialize the mocks or stubs needed for the tests
+            // For example, you could use NSubstitute to create a mock of IDentistRepository
+            // and IUnitOfWork, and then pass them to the handler and validator.
 
             _repositorio = Substitute.For<IDentistRepository>();
             _unitOfWork = Substitute.For<IUnitOfWork>();
@@ -32,7 +32,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Dentists
             _handler = new CreateDentistHandler(_repositorio, _unitOfWork, _logger);
         }
 
-        // Primero hacemos las pruebas propias del Handler:
+        // First we write the Handler-specific tests:
 
         [Fact]
         public async Task Handle_DatosValidos_CreaDentistPersisteYRetornaId()

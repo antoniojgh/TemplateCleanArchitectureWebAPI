@@ -15,7 +15,7 @@ namespace DientesLimpios.Persistence
                 options.UseSqlServer("name=DientesLimpiosConnectionString"));
 
 
-            //Inyección de dependencias de los repositorios
+            //Dependency injection for repositories
             services.AddScoped<IOfficeRepository, OfficeRepository>();
             services.AddScoped<IPatientRepository, PatientRepository>();
             services.AddScoped<IDentistRepository, DentistRepository>();

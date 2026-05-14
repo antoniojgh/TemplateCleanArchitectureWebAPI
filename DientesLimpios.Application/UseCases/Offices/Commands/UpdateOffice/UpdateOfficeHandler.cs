@@ -11,7 +11,7 @@ namespace DientesLimpios.Application.UseCases.Offices.Commands.UpdateOffice
     {
         public async Task<Result> Handle(UpdateOfficeCommand request, CancellationToken cancellationToken)
         {
-            logger.LogInformation("Actualizando office con ID: {OfficeId}", request.Id);
+            logger.LogInformation("Updating office with ID: {OfficeId}", request.Id);
 
             var office = await repository.GetById(request.Id);
 
@@ -25,7 +25,7 @@ namespace DientesLimpios.Application.UseCases.Offices.Commands.UpdateOffice
             await repository.Update(office);
             await unitOfWork.SaveChanges();
 
-            logger.LogInformation("Office actualizado correctamente con ID: {OfficeId}", request.Id);
+            logger.LogInformation("Office updated successfully with ID: {OfficeId}", request.Id);
 
             return Result.Success();
 

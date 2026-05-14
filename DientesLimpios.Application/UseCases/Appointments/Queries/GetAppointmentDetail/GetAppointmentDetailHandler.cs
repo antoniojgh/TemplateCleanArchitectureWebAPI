@@ -11,14 +11,14 @@ namespace DientesLimpios.Application.UseCases.Appointments.Queries.GetAppointmen
     {
         public async Task<Result<AppointmentDetailDTO>> Handle(GetAppointmentDetailQuery request, CancellationToken cancellationToken)
         {
-            logger.LogInformation("Obteniendo detalle de appointment con ID: {AppointmentId}", request.Id);
+            logger.LogInformation("Retrieving appointment detail with ID: {AppointmentId}", request.Id);
 
             var appointment = await repository.GetById(request.Id);
 
             if (appointment is null)
                 return Result.Failure<AppointmentDetailDTO>(DomainErrors.Appointment.NotFound);
 
-            logger.LogInformation("Detail de appointment obtenido correctamente con ID: {AppointmentId}", request.Id);
+            logger.LogInformation("Appointment detail retrieved successfully with ID: {AppointmentId}", request.Id);
 
             return Result.Success(appointment.ADto());
         }

@@ -10,9 +10,9 @@ namespace DientesLimpios.Application.UseCases.Appointments.Commands.SendAppointm
             return new AppointmentReminderDTO
             {
                 Id = appointment.Id,
-                Fecha = appointment.TimeInterval.Start,
+                Date = appointment.TimeInterval.Start,
                 Patient = appointment.Patient!.Name,
-                Patient_Email = appointment.Patient.Email.Value,
+                PatientEmail = appointment.Patient.Email.Value,
                 Office = appointment.Office!.Name,
                 Dentist = appointment.Dentist!.Name
             };

@@ -15,7 +15,7 @@ namespace DientesLimpios.Application.UseCases.Appointments.Commands.CreateAppoin
         public async Task<Result<Guid>> Handle(CreateAppointmentCommand request, CancellationToken cancellationToken)
         {
             logger.LogInformation(
-            "Creando appointment para Patient {PatientId} con Dentist {DentistId}",
+            "Creating appointment for Patient {PatientId} with Dentist {DentistId}",
             request.PatientId, request.DentistId);
 
             var appointmentOverlaps = await repository.AppointmentOverlaps(request.DentistId, request.StartDate, request.EndDate);
@@ -34,7 +34,7 @@ namespace DientesLimpios.Application.UseCases.Appointments.Commands.CreateAppoin
             var createdAppointment = await repository.Add(appointment);
             await unitOfWork.SaveChanges();
 
-            logger.LogInformation("Appointment creada correctamente con ID: {AppointmentId}", createdAppointment.Id);
+            logger.LogInformation("Appointment created successfully with ID: {AppointmentId}", createdAppointment.Id);
 
             // Email confirmation — best-effort, must not fail the appointment creation.
             try
@@ -45,12 +45,12 @@ namespace DientesLimpios.Application.UseCases.Appointments.Commands.CreateAppoin
                 await notificationService.SendAppointmentConfirmation(notificationDTO);
 
                 logger.LogInformation(
-                    "Email de confirmación enviado a {Email}", notificationDTO.Patient_Email);
+                    "Confirmation email sent to {Email}", notificationDTO.PatientEmail);
             }
             catch (Exception ex)
             {
                 logger.LogWarning(ex,
-                    "Appointment {AppointmentId} creada pero falló el envío del email de confirmación.",
+                    "Appointment {AppointmentId} created but confirmation email failed to send.",
                     createdAppointment.Id);
             }
 

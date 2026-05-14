@@ -4,9 +4,9 @@
     {
         public BusinessRuleException() { }
 
-        public BusinessRuleException(string mensaje) : base(mensaje) { }
+        public BusinessRuleException(string message) : base(message) { }
 
-        public BusinessRuleException(string mensaje, Exception innerException)
-            : base(mensaje, innerException) { }
+        public BusinessRuleException(string message, Exception innerException)
+            : base(message, innerException) { }
     }
 }

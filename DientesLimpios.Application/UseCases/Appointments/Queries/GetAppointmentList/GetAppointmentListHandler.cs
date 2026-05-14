@@ -9,15 +9,15 @@ namespace DientesLimpios.Application.UseCases.Appointments.Queries.GetAppointmen
     {
         public async Task<Result<List<AppointmentListDTO>>> Handle(GetAppointmentListQuery request, CancellationToken cancellationToken)
         {
-            logger.LogInformation("Obteniendo listado de appointments");
+            logger.LogInformation("Retrieving appointment list");
 
             var appointments = await repository.GetFiltered(request);
 
-            var citasDTO = appointments.Select(appointment => appointment.ADto()).ToList();
+            var appointmentsDTO = appointments.Select(appointment => appointment.ADto()).ToList();
 
-            logger.LogInformation("List de appointments obtenido correctamente con {NumeroAppointments} appointments", citasDTO.Count);
+            logger.LogInformation("Appointment list retrieved successfully with {AppointmentCount} appointments", appointmentsDTO.Count);
 
-            return Result.Success(citasDTO);
+            return Result.Success(appointmentsDTO);
         }
     }
 }

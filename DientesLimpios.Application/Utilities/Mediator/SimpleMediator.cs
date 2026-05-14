@@ -30,7 +30,7 @@ namespace DientesLimpios.Application.Utilities.Mediator
 
             var handler = _serviceProvider.GetService(handlerType)
                 ?? throw new MediatorException(
-                    $"No se encontró un handler para {request.GetType().Name}");
+                    $"No handler found for {request.GetType().Name}");
 
             var handleMethod = handlerType.GetMethod("Handle")!;
             return await (Task<TResponse>)handleMethod.Invoke(
