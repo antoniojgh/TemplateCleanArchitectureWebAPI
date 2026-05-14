@@ -6,34 +6,42 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace DientesLimpios.Persistence.Migrations
 {
     /// <inheritdoc />
-    public partial class CreateDB : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateTable(
-                name: "Offices",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Name = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Offices", x => x.Id);
-                });
-
             migrationBuilder.CreateTable(
                 name: "Dentists",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     Name = table.Column<string>(type: "nvarchar(250)", maxLength: 250, nullable: false),
-                    Email = table.Column<string>(type: "nvarchar(254)", maxLength: 254, nullable: false)
+                    Email = table.Column<string>(type: "nvarchar(254)", maxLength: 254, nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    LastModifiedBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    LastModifiedDate = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Dentists", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Offices",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    LastModifiedBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    LastModifiedDate = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Offices", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -42,7 +50,11 @@ namespace DientesLimpios.Persistence.Migrations
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     Name = table.Column<string>(type: "nvarchar(250)", maxLength: 250, nullable: false),
-                    Email = table.Column<string>(type: "nvarchar(254)", maxLength: 254, nullable: false)
+                    Email = table.Column<string>(type: "nvarchar(254)", maxLength: 254, nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    LastModifiedBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    LastModifiedDate = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -59,21 +71,25 @@ namespace DientesLimpios.Persistence.Migrations
                     OfficeId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     Status = table.Column<int>(type: "int", nullable: false),
                     EndDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    StartDate = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    StartDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    LastModifiedBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    LastModifiedDate = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Appointments", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Appointments_Offices_OfficeId",
-                        column: x => x.OfficeId,
-                        principalTable: "Offices",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
                         name: "FK_Appointments_Dentists_DentistId",
                         column: x => x.DentistId,
                         principalTable: "Dentists",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Appointments_Offices_OfficeId",
+                        column: x => x.OfficeId,
+                        principalTable: "Offices",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
@@ -85,14 +101,14 @@ namespace DientesLimpios.Persistence.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Appointments_OfficeId",
-                table: "Appointments",
-                column: "OfficeId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Appointments_DentistId",
                 table: "Appointments",
                 column: "DentistId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Appointments_OfficeId",
+                table: "Appointments",
+                column: "OfficeId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Appointments_PatientId",
@@ -107,10 +123,10 @@ namespace DientesLimpios.Persistence.Migrations
                 name: "Appointments");
 
             migrationBuilder.DropTable(
-                name: "Offices");
+                name: "Dentists");
 
             migrationBuilder.DropTable(
-                name: "Dentists");
+                name: "Offices");
 
             migrationBuilder.DropTable(
                 name: "Patients");

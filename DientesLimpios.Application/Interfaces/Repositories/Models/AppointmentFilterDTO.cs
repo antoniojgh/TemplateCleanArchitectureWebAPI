@@ -8,7 +8,7 @@ namespace DientesLimpios.Application.Interfaces.Repositories.Models
         public Guid? DentistId { get; set; }
         public Guid? OfficeId { get; set; }
         public AppointmentStatus? AppointmentStatus { get; set; }
-        public DateTime StartDate { get; set; }
-        public DateTime EndDate { get; set; }
+        public DateTime? StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
     }
 }

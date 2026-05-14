@@ -2,6 +2,7 @@
 using DientesLimpios.Application.Interfaces.Repositories.Models;
 using DientesLimpios.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace DientesLimpios.Persistence.Repositories
 {
@@ -50,8 +51,17 @@ namespace DientesLimpios.Persistence.Repositories
                 queryable = queryable.Where(x => x.Status == appointmentFilterDTO.AppointmentStatus);
             }
 
-            return await queryable.Where(x => x.TimeInterval.Start >= appointmentFilterDTO.StartDate
-            && x.TimeInterval.End < appointmentFilterDTO.EndDate)
+            if (appointmentFilterDTO.StartDate.HasValue)
+            {
+                queryable = queryable.Where(x => x.TimeInterval.Start >= appointmentFilterDTO.StartDate.Value);
+            }
+
+            if (appointmentFilterDTO.EndDate.HasValue)
+            {
+                queryable = queryable.Where(x => x.TimeInterval.End < appointmentFilterDTO.EndDate.Value);
+            }
+
+            return await queryable
                 .OrderBy(x => x.TimeInterval.Start)
                 .ToListAsync();
 

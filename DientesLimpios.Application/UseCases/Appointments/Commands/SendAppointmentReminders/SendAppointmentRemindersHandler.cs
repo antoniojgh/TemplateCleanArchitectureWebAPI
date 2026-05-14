@@ -18,12 +18,10 @@ namespace DientesLimpios.Application.UseCases.Appointments.Commands.SendAppointm
 
             var tomorrow = DateTime.UtcNow.Date.AddDays(1);
             var startDate = tomorrow;
-            var endDate = tomorrow.AddDays(1);
 
             var filter = new AppointmentFilterDTO
             {
                 StartDate = startDate,
-                EndDate = endDate,
                 AppointmentStatus = AppointmentStatus.Scheduled
             };
 

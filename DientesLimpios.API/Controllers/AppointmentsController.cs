@@ -4,6 +4,7 @@ using DientesLimpios.API.Extensions;
 using DientesLimpios.Application.UseCases.Appointments.Commands.CancelAppointment;
 using DientesLimpios.Application.UseCases.Appointments.Commands.CompleteAppointment;
 using DientesLimpios.Application.UseCases.Appointments.Commands.CreateAppointment;
+using DientesLimpios.Application.UseCases.Appointments.Commands.SendAppointmentReminders;
 using DientesLimpios.Application.UseCases.Appointments.Queries.GetAppointmentDetail;
 using DientesLimpios.Application.UseCases.Appointments.Queries.GetAppointmentList;
 using DientesLimpios.Application.Utilities.Mediator;
@@ -52,7 +53,7 @@ namespace DientesLimpios.API.Controllers
             return result.ToActionResult(HttpContext);
         }
 
-        [HttpPost("completar/{id}")]
+        [HttpPost("complete/{id}")]
         public async Task<IActionResult> Complete(Guid id, CancellationToken ct)
         {
             var query = new CompleteAppointmentCommand { Id = id };
@@ -62,7 +63,7 @@ namespace DientesLimpios.API.Controllers
             return result.ToActionResult(HttpContext);
         }
 
-        [HttpPost("cancelar/{id}")]
+        [HttpPost("cancel/{id}")]
         public async Task<IActionResult> Cancel(Guid id, CancellationToken ct)
         {
             var query = new CancelAppointmentCommand { Id = id };
@@ -72,6 +73,15 @@ namespace DientesLimpios.API.Controllers
             return result.ToActionResult(HttpContext);
         }
 
+        [HttpPost("reminder")]
+        public async Task<IActionResult> Reminder(CancellationToken ct)
+        {
+            var query = new SendAppointmentRemindersCommand();
+
+            var result = await mediator.Send(query, ct);
+
+            return result.ToActionResult(HttpContext);
+        }
 
     }
 }
