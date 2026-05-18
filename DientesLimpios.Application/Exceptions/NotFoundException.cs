@@ -1,13 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace DientesLimpios.Application.Exceptions
+﻿namespace DientesLimpios.Application.Exceptions
 {
-    public class NotFoundException: Exception
+    public class NotFoundException : Exception
     {
+        public string EntityType { get; }
+        public object Identifier { get; }
 
+        public NotFoundException(string entityType, object id)
+            : base($"{entityType} with id '{id}' not found.")
+        {
+            EntityType = entityType;
+            Identifier = id;
+        }
     }
 }
