@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using DientesLimpios.Application.Interfaces.Persistence;
+﻿using DientesLimpios.Application.Interfaces.Persistence;
 
 namespace DientesLimpios.Persistence.UnitsOfWork
 {
