@@ -4,16 +4,20 @@ using DientesLimpios.Persistence.Repositories;
 using DientesLimpios.Persistence.UnitsOfWork;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 
 namespace DientesLimpios.Persistence
 {
     public static class PersistenceServiceRegistration
     {
-        public static IServiceCollection AgregarServicesDePersistence(this IServiceCollection services)
+        public static IServiceCollection AgregarServicesDePersistence(this IServiceCollection services, IConfiguration configuration)
         {
-            services.AddDbContext<DientesLimpiosDbContext>(options =>
-                options.UseSqlServer("name=DientesLimpiosConnectionString"));
+            
+            var connectionString = configuration.GetConnectionString("DientesLimpiosConnectionString")
+                ?? throw new InvalidOperationException("Connection string 'DientesLimpiosConnectionString' is not configured.");
 
+            services.AddDbContext<DientesLimpiosDbContext>(options =>
+                    options.UseSqlServer(connectionString));
 
             //Dependency injection for repositories
             services.AddScoped<IOfficeRepository, OfficeRepository>();

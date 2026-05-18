@@ -36,9 +36,9 @@ try
 
     // Dependency injection for Application, Persistence and Infrastructure layers
     builder.Services.AgregarServicesDeApplication();
-    builder.Services.AgregarServicesDePersistence();
+    builder.Services.AgregarServicesDePersistence(builder.Configuration);
     builder.Services.AgregarServicesDeInfrastructure(builder.Configuration);
-    builder.Services.AgregarServicesDeIdentity();
+    builder.Services.AgregarServicesDeIdentity(builder.Configuration);
 
     // Add the background service for appointment reminders
     builder.Services.AddHostedService<AppointmentReminderJob>();

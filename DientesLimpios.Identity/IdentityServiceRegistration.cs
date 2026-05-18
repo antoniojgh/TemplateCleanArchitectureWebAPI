@@ -4,13 +4,17 @@ using DientesLimpios.Identity.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 
 namespace DientesLimpios.Identity
 {
     public static class IdentityServiceRegistration
     {
-        public static void AgregarServicesDeIdentity(this IServiceCollection services)
+        public static IServiceCollection AgregarServicesDeIdentity(this IServiceCollection services, IConfiguration configuration)
         {
+            var connectionString = configuration.GetConnectionString("DientesLimpiosConnectionString")
+                                   ?? throw new InvalidOperationException("Connection string 'DientesLimpiosConnectionString' is not configured.");
+
             services.AddAuthentication(IdentityConstants.BearerScheme).AddBearerToken(IdentityConstants.BearerScheme);
 
             services.AddAuthorization(options =>
@@ -19,7 +23,7 @@ namespace DientesLimpios.Identity
             });
 
             services.AddDbContext<DientesLimpiosIdentityDbContext>(options =>
-            options.UseSqlServer("name=DientesLimpiosConnectionString"));
+                options.UseSqlServer(connectionString));
 
             services.AddIdentityCore<User>()
                 .AddEntityFrameworkStores<DientesLimpiosIdentityDbContext>()
@@ -27,6 +31,8 @@ namespace DientesLimpios.Identity
 
             services.AddTransient<IUserService, UserService>();
             services.AddHttpContextAccessor();
+
+            return services;
         }
 
     }
