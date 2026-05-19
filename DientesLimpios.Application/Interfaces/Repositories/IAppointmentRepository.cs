@@ -5,10 +5,10 @@ namespace DientesLimpios.Application.Interfaces.Repositories
 {
     public interface IAppointmentRepository : IRepository<Appointment>
     {
-        Task<bool> AppointmentOverlaps(Guid dentistId, DateTime start, DateTime end);
+        Task<bool> AppointmentOverlaps(Guid dentistId, DateTime start, DateTime end, CancellationToken cancellationToken = default);
 
         // Obtiene una appointment por su Id, incluyendo las entidades relacionadas y reemplaza el método base
-        new Task<Appointment?> GetById(Guid id);
-        Task<IEnumerable<Appointment>> GetFiltered(AppointmentFilterDTO appointmentFilterDTO);
+        Task<Appointment?> GetById(Guid id, CancellationToken cancellationToken = default);
+        Task<IEnumerable<Appointment>> GetFiltered(AppointmentFilterDTO appointmentFilterDTO, CancellationToken cancellationToken = default);
     }
 }

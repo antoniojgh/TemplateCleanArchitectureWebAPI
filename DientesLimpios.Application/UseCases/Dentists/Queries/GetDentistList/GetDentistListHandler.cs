@@ -12,7 +12,7 @@ namespace DientesLimpios.Application.UseCases.Dentists.Queries.GetDentistList
         {
             logger.LogInformation("Retrieving dentist list");
 
-            var filteredDentists = await repository.GetFiltered(request);
+            var filteredDentists = await repository.GetFiltered(request, cancellationToken);
             var totalDentists = await repository.GetTotalRecordCount();
 
             var filteredDentistsDTO = filteredDentists.Select(dentist => dentist.ADto()).ToList();

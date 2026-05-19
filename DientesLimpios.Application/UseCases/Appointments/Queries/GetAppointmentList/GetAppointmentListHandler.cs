@@ -11,7 +11,7 @@ namespace DientesLimpios.Application.UseCases.Appointments.Queries.GetAppointmen
         {
             logger.LogInformation("Retrieving appointment list");
 
-            var appointments = await repository.GetFiltered(request);
+            var appointments = await repository.GetFiltered(request, cancellationToken);
 
             var appointmentsDTO = appointments.Select(appointment => appointment.ADto()).ToList();
 

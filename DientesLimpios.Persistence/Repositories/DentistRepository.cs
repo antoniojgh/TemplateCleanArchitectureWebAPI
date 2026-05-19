@@ -15,7 +15,7 @@ namespace DientesLimpios.Persistence.Repositories
             this.context = context;
         }
 
-        public async Task<IEnumerable<Dentist>> GetFiltered(DentistFilterDTO filter)
+        public async Task<IEnumerable<Dentist>> GetFiltered(DentistFilterDTO filter, CancellationToken cancellationToken = default)
         {
             var queryable = context.Dentists.AsQueryable();
 
@@ -29,7 +29,7 @@ namespace DientesLimpios.Persistence.Repositories
                 queryable = queryable.Where(x => x.Email.Value.Contains(filter.Email));
             }
 
-            return await queryable.OrderBy(x => x.Name).Paginar(filter.Pagina, filter.RegistrosPorPagina).ToListAsync();
+            return await queryable.OrderBy(x => x.Name).Paginar(filter.Pagina, filter.RegistrosPorPagina).ToListAsync(cancellationToken);
         }
     }
 }

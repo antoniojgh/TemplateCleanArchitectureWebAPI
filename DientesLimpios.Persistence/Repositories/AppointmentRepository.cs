@@ -2,7 +2,6 @@
 using DientesLimpios.Application.Interfaces.Repositories.Models;
 using DientesLimpios.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace DientesLimpios.Persistence.Repositories
 {
@@ -15,15 +14,15 @@ namespace DientesLimpios.Persistence.Repositories
             this.context = context;
         }
 
-        public async Task<bool> AppointmentOverlaps(Guid dentistId, DateTime start, DateTime end)
+        public async Task<bool> AppointmentOverlaps(Guid dentistId, DateTime start, DateTime end, CancellationToken cancellationToken = default)
         {
             return await context.Appointments
                 .Where(x => x.DentistId == dentistId && x.Status == Domain.Enums.AppointmentStatus.Scheduled &&
                 start < x.TimeInterval.End && end > x.TimeInterval.Start
-                ).AnyAsync();
+                ).AnyAsync(cancellationToken);
         }
 
-        public async Task<IEnumerable<Appointment>> GetFiltered(AppointmentFilterDTO appointmentFilterDTO)
+        public async Task<IEnumerable<Appointment>> GetFiltered(AppointmentFilterDTO appointmentFilterDTO, CancellationToken cancellationToken = default)
         {
             var queryable = context.Appointments
                                 .Include(x => x.Patient)
@@ -63,17 +62,17 @@ namespace DientesLimpios.Persistence.Repositories
 
             return await queryable
                 .OrderBy(x => x.TimeInterval.Start)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
         }
 
-        new public async Task<Appointment?> GetById(Guid id)
+        public async Task<Appointment?> GetById(Guid id, CancellationToken cancellationToken = default)
         {
             return await context.Appointments
                 .Include(x => x.Patient)
                 .Include(x => x.Dentist)
                 .Include(x => x.Office)
-                .FirstOrDefaultAsync(x => x.Id == id);
+                .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         }
 
     }

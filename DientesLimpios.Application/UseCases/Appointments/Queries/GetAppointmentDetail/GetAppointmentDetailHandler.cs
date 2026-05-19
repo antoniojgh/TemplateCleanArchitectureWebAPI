@@ -13,7 +13,7 @@ namespace DientesLimpios.Application.UseCases.Appointments.Queries.GetAppointmen
         {
             logger.LogInformation("Retrieving appointment detail with ID: {AppointmentId}", request.Id);
 
-            var appointment = await repository.GetById(request.Id);
+            var appointment = await repository.GetById(request.Id, cancellationToken);
 
             if (appointment is null)
                 return Result.Failure<AppointmentDetailDTO>(DomainErrors.Appointment.NotFound);

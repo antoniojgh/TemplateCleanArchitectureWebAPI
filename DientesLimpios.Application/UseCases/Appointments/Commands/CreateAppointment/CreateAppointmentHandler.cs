@@ -18,7 +18,7 @@ namespace DientesLimpios.Application.UseCases.Appointments.Commands.CreateAppoin
             "Creating appointment for Patient {PatientId} with Dentist {DentistId}",
             request.PatientId, request.DentistId);
 
-            var appointmentOverlaps = await repository.AppointmentOverlaps(request.DentistId, request.StartDate, request.EndDate);
+            var appointmentOverlaps = await repository.AppointmentOverlaps(request.DentistId, request.StartDate, request.EndDate, cancellationToken);
 
             if (appointmentOverlaps)
                 return Result.Failure<Guid>(DomainErrors.Appointment.Overlapping);
@@ -39,7 +39,7 @@ namespace DientesLimpios.Application.UseCases.Appointments.Commands.CreateAppoin
             // Email confirmation — best-effort, must not fail the appointment creation.
             try
             {
-                var appointmentDb = await repository.GetById(createdAppointment.Id);
+                var appointmentDb = await repository.GetById(createdAppointment.Id, cancellationToken);
                 var notificationDTO = appointmentDb!.ADto();
 
                 await notificationService.SendAppointmentConfirmation(notificationDTO);

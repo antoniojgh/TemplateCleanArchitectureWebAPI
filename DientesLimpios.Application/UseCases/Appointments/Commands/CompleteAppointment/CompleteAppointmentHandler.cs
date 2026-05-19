@@ -14,7 +14,7 @@ namespace DientesLimpios.Application.UseCases.Appointments.Commands.CompleteAppo
         {
             logger.LogInformation("Completing appointment with ID: {AppointmentId}", request.Id);
 
-            var appointment = await repository.GetById(request.Id);
+            var appointment = await repository.GetById(request.Id, cancellationToken);
 
             if (appointment is null)
                 return Result.Failure(DomainErrors.Appointment.NotFound);

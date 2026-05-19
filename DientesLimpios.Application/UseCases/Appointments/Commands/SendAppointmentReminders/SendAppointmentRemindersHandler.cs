@@ -25,7 +25,7 @@ namespace DientesLimpios.Application.UseCases.Appointments.Commands.SendAppointm
                 AppointmentStatus = AppointmentStatus.Scheduled
             };
 
-            var appointments = await repository.GetFiltered(filter);
+            var appointments = await repository.GetFiltered(filter, cancellationToken);
 
             foreach (var appointment in appointments)
             {

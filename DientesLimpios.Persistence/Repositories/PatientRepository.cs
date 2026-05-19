@@ -16,7 +16,7 @@ namespace DientesLimpios.Persistence.Repositories
             this.context = context;
         }
 
-        public async Task<IEnumerable<Patient>> GetFiltered(PatientFilterDTO filter)
+        public async Task<IEnumerable<Patient>> GetFiltered(PatientFilterDTO filter, CancellationToken cancellationToken = default)
         {
             var queryable = context.Patients.AsQueryable();
 
@@ -32,7 +32,7 @@ namespace DientesLimpios.Persistence.Repositories
 
 
             return await queryable.OrderBy(x => x.Name)
-                .Paginar(filter.Pagina, filter.RegistrosPorPagina).ToListAsync();
+                .Paginar(filter.Pagina, filter.RegistrosPorPagina).ToListAsync(cancellationToken);
         }
     }
 }
