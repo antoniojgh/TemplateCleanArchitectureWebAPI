@@ -19,6 +19,11 @@ namespace DientesLimpios.Persistence
             services.AddDbContext<DientesLimpiosDbContext>(options =>
                     options.UseSqlServer(connectionString));
 
+            // NEW — forward IApplicationDbContext to the same DbContext instance:
+            services.AddScoped<IApplicationDbContext>(sp =>
+                sp.GetRequiredService<DientesLimpiosDbContext>());
+
+
             //Dependency injection for repositories
             services.AddScoped<IOfficeRepository, OfficeRepository>();
             services.AddScoped<IPatientRepository, PatientRepository>();

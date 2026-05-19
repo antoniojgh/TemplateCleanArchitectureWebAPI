@@ -1,11 +1,12 @@
 ﻿using DientesLimpios.Application.Interfaces.Identity;
+using DientesLimpios.Application.Interfaces.Persistence;
 using DientesLimpios.Domain.Common;
 using DientesLimpios.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace DientesLimpios.Persistence
 {
-    public class DientesLimpiosDbContext : DbContext
+    public class DientesLimpiosDbContext : DbContext, IApplicationDbContext
     {
         private readonly IUserService? _userService;
         public DientesLimpiosDbContext(DbContextOptions<DientesLimpiosDbContext> options, IUserService userService) : base(options)
