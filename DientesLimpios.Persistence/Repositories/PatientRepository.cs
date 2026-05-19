@@ -6,16 +6,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DientesLimpios.Persistence.Repositories
 {
-    public class PatientRepository : Repository<Patient>, IPatientRepository
+    public sealed class PatientRepository(DientesLimpiosDbContext context) : IPatientRepository
     {
-        private readonly DientesLimpiosDbContext context;
-
-        public PatientRepository(DientesLimpiosDbContext context)
-            : base(context)
-        {
-            this.context = context;
-        }
-
         public async Task<IEnumerable<Patient>> GetFiltered(PatientFilterDTO filter, CancellationToken cancellationToken = default)
         {
             var queryable = context.Patients.AsQueryable();

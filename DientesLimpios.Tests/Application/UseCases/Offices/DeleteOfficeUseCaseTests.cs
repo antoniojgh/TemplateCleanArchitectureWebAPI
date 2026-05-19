@@ -1,32 +1,29 @@
-﻿using DientesLimpios.Application.UseCases.Offices.Commands.DeleteOffice;
-using DientesLimpios.Application.Interfaces.Persistence;
-using DientesLimpios.Application.Interfaces.Repositories;
+﻿using DientesLimpios.Application.Interfaces.Persistence;
+using DientesLimpios.Application.UseCases.Offices.Commands.DeleteOffice;
 using DientesLimpios.Domain.Entities;
 using DientesLimpios.Domain.Errors;
 using FluentAssertions;
 using FluentValidation.TestHelper;
 using Microsoft.Extensions.Logging;
+using MockQueryable.NSubstitute;
 using NSubstitute;
-using NSubstitute.ReturnsExtensions;
 
 namespace DientesLimpios.Tests.Application.UseCases.Offices
 {
     public class DeleteOfficeUseCaseTests
     {
-        private readonly IOfficeRepository _repositorio;
-        private readonly IUnitOfWork _unitOfWork;
+        private readonly IApplicationDbContext _db;
         private readonly DeleteOfficeHandler _handler;
         private readonly DeleteOfficeCommandValidator _validator;
         private readonly ILogger<DeleteOfficeHandler> _logger;
 
         public DeleteOfficeUseCaseTests()
         {
-            _repositorio = Substitute.For<IOfficeRepository>();
-            _unitOfWork = Substitute.For<IUnitOfWork>();
+            _db = Substitute.For<IApplicationDbContext>();
             _logger = Substitute.For<ILogger<DeleteOfficeHandler>>();
             _validator = new DeleteOfficeCommandValidator();
 
-            _handler = new DeleteOfficeHandler(_repositorio, _unitOfWork, _logger);
+            _handler = new DeleteOfficeHandler(_db, _logger);
         }
 
         // First we write the Handler-specific tests:
@@ -35,21 +32,21 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
         public async Task Handle_CuandoOfficeExiste_BorraOfficeYPersiste()
         {
             // Arrange
-            var id = Guid.NewGuid();
-            var command = new DeleteOfficeCommand { Id = id };
-
             var officeResult = Office.Create("Office A");
             var office = officeResult.Value;
 
-            _repositorio.GetById(id).Returns(office);
+            var id = office.Id;
+            var command = new DeleteOfficeCommand { Id = id };
+
+            var dbSet = new List<Office> { office }.BuildMockDbSet();
+            _db.Offices.Returns(dbSet);
 
             // Act
             var result = await _handler.Handle(command, CancellationToken.None);
 
             // Assert
             result.IsSuccess.Should().BeTrue();
-            await _repositorio.Received(1).Delete(office);
-            await _unitOfWork.Received(1).SaveChanges();
+            await _db.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
         }
 
         [Fact]
@@ -57,7 +54,9 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
         {
             // Arrange
             var command = new DeleteOfficeCommand { Id = Guid.NewGuid() };
-            _repositorio.GetById(command.Id).ReturnsNull();
+
+            var dbSet = new List<Office>().BuildMockDbSet();
+            _db.Offices.Returns(dbSet);
 
             // Act
             var result = await _handler.Handle(command, CancellationToken.None);
@@ -65,8 +64,8 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
             // Assert
             result.IsFailure.Should().BeTrue();
             result.Error.Should().Be(DomainErrors.Office.NotFound);
-            await _repositorio.DidNotReceive().Delete(Arg.Any<Office>());
-            await _unitOfWork.DidNotReceive().SaveChanges();
+            _db.Offices.DidNotReceive().Remove(Arg.Any<Office>());
+            await _db.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
         }
 
 

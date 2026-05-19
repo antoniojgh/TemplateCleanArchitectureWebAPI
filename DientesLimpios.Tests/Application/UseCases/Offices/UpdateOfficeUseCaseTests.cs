@@ -1,24 +1,19 @@
-﻿using DientesLimpios.Application.UseCases.Offices.Commands.UpdateOffice;
-using DientesLimpios.Application.UseCases.Offices.Commands.DeleteOffice;
-using DientesLimpios.Application.Exceptions;
-using DientesLimpios.Application.Interfaces.Persistence;
-using DientesLimpios.Application.Interfaces.Repositories;
-using DientesLimpios.Domain.Common.ResultPattern;
+﻿using DientesLimpios.Application.Interfaces.Persistence;
+using DientesLimpios.Application.UseCases.Offices.Commands.UpdateOffice;
 using DientesLimpios.Domain.Entities;
 using DientesLimpios.Domain.Errors;
 using FluentAssertions;
 using FluentValidation.TestHelper;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using MockQueryable.NSubstitute;
 using NSubstitute;
-using NSubstitute.ExceptionExtensions;
-using NSubstitute.ReturnsExtensions;
 
 namespace DientesLimpios.Tests.Application.UseCases.Offices
 {
     public class UpdateOfficeUseCaseTests
     {
-        private readonly IOfficeRepository _repositorio;
-        private readonly IUnitOfWork _unitOfWork;
+        private readonly IApplicationDbContext _db;
         private readonly UpdateOfficeHandler _handler;
         private readonly UpdateOfficeCommandValidator _validator;
         private readonly ILogger<UpdateOfficeHandler> _logger;
@@ -26,12 +21,11 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
 
         public UpdateOfficeUseCaseTests()
         {
-            _repositorio = Substitute.For<IOfficeRepository>();
-            _unitOfWork = Substitute.For<IUnitOfWork>();
+            _db = Substitute.For<IApplicationDbContext>();
             _logger = Substitute.For<ILogger<UpdateOfficeHandler>>();
             _validator = new UpdateOfficeCommandValidator();
 
-            _handler = new UpdateOfficeHandler(_repositorio, _unitOfWork, _logger);
+            _handler = new UpdateOfficeHandler(_db, _logger);
         }
 
         // First we write the Handler-specific tests:
@@ -46,15 +40,17 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
             var id = office.Id;
             var command = new UpdateOfficeCommand { Id = id, Name = "Nuevo name" };
 
-            _repositorio.GetById(id).Returns(office);
+            var dbSet = new List<Office> { office }.BuildMockDbSet();
+            _db.Offices.Returns(dbSet);
 
             // Act
             var result = await _handler.Handle(command, CancellationToken.None);
 
             // Assert
             result.IsSuccess.Should().BeTrue();
-            await _repositorio.Received(1).Update(office);
-            await _unitOfWork.Received(1).SaveChanges();
+            await _db.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+            var officeInDb = await dbSet.FirstAsync();
+            officeInDb.Name.Should().Be("Nuevo name");
 
         }
 
@@ -63,7 +59,9 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
         {
             // Arrange
             var command = new UpdateOfficeCommand { Id = Guid.NewGuid(), Name = "Name" };
-            _repositorio.GetById(command.Id).ReturnsNull();
+
+            var dbSet = new List<Office>().BuildMockDbSet();
+            _db.Offices.Returns(dbSet);
 
             // Act
             var result = await _handler.Handle(command, CancellationToken.None);
@@ -71,8 +69,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
             // Assert
             result.IsFailure.Should().BeTrue();
             result.Error.Should().Be(DomainErrors.Office.NotFound);
-            await _repositorio.DidNotReceive().Update(Arg.Any<Office>());
-            await _unitOfWork.DidNotReceive().SaveChanges();
+            await _db.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
         }
 
         // Then we write the Validator-specific tests, since the validator

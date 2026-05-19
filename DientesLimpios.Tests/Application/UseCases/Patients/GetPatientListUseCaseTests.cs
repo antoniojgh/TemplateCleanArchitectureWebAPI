@@ -1,25 +1,28 @@
-﻿using DientesLimpios.Application.UseCases.Dentists.Queries.GetDentistList;
-using DientesLimpios.Application.UseCases.Patients.Queries.GetPatientList;
+﻿using DientesLimpios.Application.Interfaces.Persistence;
 using DientesLimpios.Application.Interfaces.Repositories;
+using DientesLimpios.Application.UseCases.Patients.Queries.GetPatientList;
 using DientesLimpios.Domain.Entities;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
+using MockQueryable.NSubstitute;
 using NSubstitute;
 
 namespace DientesLimpios.Tests.Application.UseCases.Patients
 {
     public class GetPatientListUseCaseTests
     {
+        private readonly IApplicationDbContext _db;
         private readonly IPatientRepository _repositorio;
         private readonly ILogger<GetPatientListHandler> _logger;
         private readonly GetPatientListHandler _handler;
 
         public GetPatientListUseCaseTests()
         {
+            _db = Substitute.For<IApplicationDbContext>();
             _repositorio = Substitute.For<IPatientRepository>();
             _logger = Substitute.For<ILogger<GetPatientListHandler>>();
 
-            _handler = new GetPatientListHandler(_repositorio, _logger);
+            _handler = new GetPatientListHandler(_repositorio, _db, _logger);
         }
 
         [Fact]
@@ -34,9 +37,11 @@ namespace DientesLimpios.Tests.Application.UseCases.Patients
 
             var patients = new List<Patient> { paciente1, paciente2 };
 
-            _repositorio.GetFiltered(Arg.Any<PatientFilterDTO>()).Returns(patients);
+            _repositorio.GetFiltered(Arg.Any<PatientFilterDTO>(), Arg.Any<CancellationToken>()).Returns(patients);
 
-            _repositorio.GetTotalRecordCount().Returns(10);
+            var allPatients = Enumerable.Range(0, 10).Select(i => Patient.Create($"Name{i}", $"email{i}@test.com").Value).ToList();
+            var dbSet = allPatients.BuildMockDbSet();
+            _db.Patients.Returns(dbSet);
 
             var request = new GetPatientListQuery
             {
@@ -55,8 +60,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Patients
             result.Value.Elementos[0].Email.Should().Be("felipe@ejemplo.com");
             result.Value.Elementos[1].Name.Should().Be("Claudia");
             result.Value.Elementos[1].Email.Should().Be("claudia@ejemplo.com");
-            await _repositorio.Received(1).GetFiltered(Arg.Any<PatientFilterDTO>());
-            await _repositorio.Received(1).GetTotalRecordCount();
+            await _repositorio.Received(1).GetFiltered(Arg.Any<PatientFilterDTO>(), Arg.Any<CancellationToken>());
 
         }
 
@@ -71,9 +75,10 @@ namespace DientesLimpios.Tests.Application.UseCases.Patients
 
             IEnumerable<Patient> patients = new List<Patient>();
 
-            _repositorio.GetFiltered(Arg.Any<PatientFilterDTO>()).Returns(patients);
+            _repositorio.GetFiltered(Arg.Any<PatientFilterDTO>(), Arg.Any<CancellationToken>()).Returns(patients);
 
-            _repositorio.GetTotalRecordCount().Returns(0);
+            var dbSet = new List<Patient>().BuildMockDbSet();
+            _db.Patients.Returns(dbSet);
 
             var request = new GetPatientListQuery
             {

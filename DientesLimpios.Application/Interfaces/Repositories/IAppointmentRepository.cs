@@ -3,7 +3,7 @@ using DientesLimpios.Domain.Entities;
 
 namespace DientesLimpios.Application.Interfaces.Repositories
 {
-    public interface IAppointmentRepository : IRepository<Appointment>
+    public interface IAppointmentRepository 
     {
         Task<bool> AppointmentOverlaps(Guid dentistId, DateTime start, DateTime end, CancellationToken cancellationToken = default);
 

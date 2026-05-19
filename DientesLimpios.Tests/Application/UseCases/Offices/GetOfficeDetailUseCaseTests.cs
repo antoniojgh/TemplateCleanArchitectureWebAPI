@@ -1,26 +1,26 @@
-﻿using DientesLimpios.Application.UseCases.Offices.Queries.GetOfficeDetail;
-using DientesLimpios.Application.Interfaces.Repositories;
+﻿using DientesLimpios.Application.Interfaces.Persistence;
+using DientesLimpios.Application.UseCases.Offices.Queries.GetOfficeDetail;
 using DientesLimpios.Domain.Entities;
 using DientesLimpios.Domain.Errors;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
+using MockQueryable.NSubstitute;
 using NSubstitute;
-using NSubstitute.ReturnsExtensions;
 
 namespace DientesLimpios.Tests.Application.UseCases.Offices
 {
     public class GetOfficeDetailUseCaseTests
     {
-        private readonly IOfficeRepository _repositorio;
+        private readonly IApplicationDbContext _db;
         private readonly ILogger<GetOfficeDetailHandler> _logger;
         private readonly GetOfficeDetailHandler _handler;
 
         public GetOfficeDetailUseCaseTests()
         {
-            _repositorio = Substitute.For<IOfficeRepository>();
+            _db = Substitute.For<IApplicationDbContext>();
             _logger = Substitute.For<ILogger<GetOfficeDetailHandler>>();
 
-            _handler = new GetOfficeDetailHandler(_repositorio, _logger);
+            _handler = new GetOfficeDetailHandler(_db, _logger);
         }
 
 
@@ -34,7 +34,8 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
             var id = office.Id;
             var query = new GetOfficeDetailQuery { Id = id };
 
-            _repositorio.GetById(id).Returns(office);
+            var dbSet = new List<Office> { office }.BuildMockDbSet();
+            _db.Offices.Returns(dbSet);
 
             // Act
             var result = await _handler.Handle(query, CancellationToken.None);
@@ -43,7 +44,6 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
             result.IsSuccess.Should().BeTrue();
             result.Value.Id.Should().Be(id);
             result.Value.Name.Should().Be("Office A");
-            await _repositorio.Received(1).GetById(id);
         }
 
         [Fact]
@@ -52,7 +52,9 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
             // Arrange
             var id = Guid.NewGuid();
             var query = new GetOfficeDetailQuery { Id = id };
-            _repositorio.GetById(id).ReturnsNull();
+
+            var dbSet = new List<Office>().BuildMockDbSet();
+            _db.Offices.Returns(dbSet);
 
             // Act
             var result = await _handler.Handle(query, CancellationToken.None);
@@ -60,7 +62,6 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
             // Assert
             result.IsFailure.Should().BeTrue();
             result.Error.Should().Be(DomainErrors.Office.NotFound);
-            await _repositorio.Received(1).GetById(id);
         }
 
     }

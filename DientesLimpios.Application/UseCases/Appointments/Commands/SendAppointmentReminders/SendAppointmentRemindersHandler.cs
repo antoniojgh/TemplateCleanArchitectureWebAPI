@@ -1,5 +1,4 @@
-﻿using DientesLimpios.Application.UseCases.Appointments.Commands.CancelAppointment;
-using DientesLimpios.Application.Interfaces.Notifications;
+﻿using DientesLimpios.Application.Interfaces.Notifications;
 using DientesLimpios.Application.Interfaces.Repositories;
 using DientesLimpios.Application.Interfaces.Repositories.Models;
 using DientesLimpios.Application.Utilities.Mediator;

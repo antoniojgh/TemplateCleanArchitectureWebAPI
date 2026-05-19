@@ -25,7 +25,6 @@ namespace DientesLimpios.Persistence
 
 
             //Dependency injection for repositories
-            services.AddScoped<IOfficeRepository, OfficeRepository>();
             services.AddScoped<IPatientRepository, PatientRepository>();
             services.AddScoped<IDentistRepository, DentistRepository>();
             services.AddScoped<IAppointmentRepository, AppointmentRepository>();

@@ -1,5 +1,4 @@
 ﻿using DientesLimpios.Application.Interfaces.Persistence;
-using DientesLimpios.Application.Interfaces.Repositories;
 using DientesLimpios.Application.Utilities.Mediator;
 using DientesLimpios.Domain.Common.ResultPattern;
 using DientesLimpios.Domain.Entities;
@@ -7,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace DientesLimpios.Application.UseCases.Offices.Commands.CreateOffice
 {
-    public class CreateOfficeHandler(IOfficeRepository repository, IUnitOfWork unitOfWork, ILogger<CreateOfficeHandler> logger) : IRequestHandler<CreateOfficeCommand, Result<Guid>>
+    public class CreateOfficeHandler(IApplicationDbContext db, ILogger<CreateOfficeHandler> logger) : IRequestHandler<CreateOfficeCommand, Result<Guid>>
     {
         public async Task<Result<Guid>> Handle(CreateOfficeCommand request, CancellationToken cancellationToken)
         {
@@ -20,12 +19,12 @@ namespace DientesLimpios.Application.UseCases.Offices.Commands.CreateOffice
 
             var office = officeResult.Value;
 
-            var response = await repository.Add(office);
-            await unitOfWork.SaveChanges();
+            db.Offices.Add(office);
+            await db.SaveChangesAsync(cancellationToken);
 
             logger.LogInformation("Office created successfully with name: {Name}", request.Name);
 
-            return Result.Success(response.Id);
+            return Result.Success(office.Id);
 
         }
     }

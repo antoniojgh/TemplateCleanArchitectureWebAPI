@@ -1,24 +1,25 @@
-﻿using DientesLimpios.Application.UseCases.Offices.Queries.GetOfficeList;
-using DientesLimpios.Application.Interfaces.Repositories;
+﻿using DientesLimpios.Application.Interfaces.Persistence;
+using DientesLimpios.Application.UseCases.Offices.Queries.GetOfficeList;
 using DientesLimpios.Domain.Entities;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
+using MockQueryable.NSubstitute;
 using NSubstitute;
 
 namespace DientesLimpios.Tests.Application.UseCases.Offices
 {
     public class GetOfficeListUseCaseTests
     {
-        private readonly IOfficeRepository _repositorio;
+        private readonly IApplicationDbContext _db;
         private readonly ILogger<GetOfficeListHandler> _logger;
         private readonly GetOfficeListHandler _handler;
 
         public GetOfficeListUseCaseTests()
         {
-            _repositorio = Substitute.For<IOfficeRepository>();
+            _db = Substitute.For<IApplicationDbContext>();
             _logger = Substitute.For<ILogger<GetOfficeListHandler>>();
 
-            _handler = new GetOfficeListHandler(_repositorio, _logger);
+            _handler = new GetOfficeListHandler(_db, _logger);
         }
 
 
@@ -32,7 +33,8 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
                     Office.Create("Office B").Value,
                 };
 
-            _repositorio.GetAll().Returns(offices);
+            var dbSet = offices.BuildMockDbSet();
+            _db.Offices.Returns(dbSet);
 
             // Act
             var result = await _handler.Handle(new GetOfficeListQuery(), CancellationToken.None);
@@ -52,7 +54,8 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
         public async Task Handle_CuandoNoHayOffices_RetornaListaVacia()
         {
             // Arrange
-            _repositorio.GetAll().Returns(new List<Office>());
+            var dbSet = new List<Office>().BuildMockDbSet();
+            _db.Offices.Returns(dbSet);
 
             // Act
             var result = await _handler.Handle(new GetOfficeListQuery(), CancellationToken.None);
@@ -60,7 +63,6 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
             // Assert
             result.IsSuccess.Should().BeTrue();
             result.Value.Count.Should().Be(0);
-            await _repositorio.Received(1).GetAll();
         }
     }
 }

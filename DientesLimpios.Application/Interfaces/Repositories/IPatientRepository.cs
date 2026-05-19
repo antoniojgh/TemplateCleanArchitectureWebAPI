@@ -3,7 +3,7 @@ using DientesLimpios.Domain.Entities;
 
 namespace DientesLimpios.Application.Interfaces.Repositories
 {
-    public interface IPatientRepository : IRepository<Patient>
+    public interface IPatientRepository
     {
         Task<IEnumerable<Patient>> GetFiltered(PatientFilterDTO filter, CancellationToken cancellationToken = default);
     }

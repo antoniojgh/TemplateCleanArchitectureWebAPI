@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace DientesLimpios.Application.UseCases.Appointments.Commands.CancelAppointment
 {
-    public class CancelAppointmentHandler(IAppointmentRepository repository, IUnitOfWork unitOfWork, ILogger<CancelAppointmentHandler> logger) : IRequestHandler<CancelAppointmentCommand, Result>
+    public class CancelAppointmentHandler(IApplicationDbContext db, IAppointmentRepository repository, ILogger<CancelAppointmentHandler> logger) : IRequestHandler<CancelAppointmentCommand, Result>
     {
 
         public async Task<Result> Handle(CancelAppointmentCommand request, CancellationToken cancellationToken)
@@ -24,8 +24,7 @@ namespace DientesLimpios.Application.UseCases.Appointments.Commands.CancelAppoin
             if (cancelarResult.IsFailure)
                 return cancelarResult;
 
-            await repository.Update(appointment);
-            await unitOfWork.SaveChanges();
+            await db.SaveChangesAsync(cancellationToken);
 
             logger.LogInformation("Appointment cancelled successfully with ID: {AppointmentId}", request.Id);
 

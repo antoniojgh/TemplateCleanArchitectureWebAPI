@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 
 namespace DientesLimpios.Application.UseCases.Appointments.Commands.CreateAppointment
 {
-    public class CreateAppointmentHandler(IAppointmentRepository repository, IUnitOfWork unitOfWork, INotificationService notificationService, ILogger<CreateAppointmentHandler> logger) : IRequestHandler<CreateAppointmentCommand, Result<Guid>>
+    public class CreateAppointmentHandler(IApplicationDbContext db, IAppointmentRepository repository, INotificationService notificationService, ILogger<CreateAppointmentHandler> logger) : IRequestHandler<CreateAppointmentCommand, Result<Guid>>
     {
         public async Task<Result<Guid>> Handle(CreateAppointmentCommand request, CancellationToken cancellationToken)
         {
@@ -31,15 +31,16 @@ namespace DientesLimpios.Application.UseCases.Appointments.Commands.CreateAppoin
 
             var appointment = appointmentResult.Value;
 
-            var createdAppointment = await repository.Add(appointment);
-            await unitOfWork.SaveChanges();
+            db.Appointments.Add(appointment);
+            await db.SaveChangesAsync(cancellationToken);
 
-            logger.LogInformation("Appointment created successfully with ID: {AppointmentId}", createdAppointment.Id);
 
+            logger.LogInformation("Appointment created successfully with ID: {AppointmentId}", appointment.Id);
+            
             // Email confirmation — best-effort, must not fail the appointment creation.
             try
             {
-                var appointmentDb = await repository.GetById(createdAppointment.Id, cancellationToken);
+                var appointmentDb = await repository.GetById(appointment.Id, cancellationToken);
                 var notificationDTO = appointmentDb!.ADto();
 
                 await notificationService.SendAppointmentConfirmation(notificationDTO);
@@ -51,10 +52,11 @@ namespace DientesLimpios.Application.UseCases.Appointments.Commands.CreateAppoin
             {
                 logger.LogWarning(ex,
                     "Appointment {AppointmentId} created but confirmation email failed to send.",
-                    createdAppointment.Id);
+                    appointment.Id);
             }
 
-            return Result.Success(createdAppointment.Id);
+            return Result.Success(appointment.Id);
+
         }
 
     }

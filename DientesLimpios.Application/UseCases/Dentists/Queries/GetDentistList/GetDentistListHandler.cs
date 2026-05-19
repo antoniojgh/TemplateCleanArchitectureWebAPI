@@ -1,19 +1,22 @@
-﻿using DientesLimpios.Application.Interfaces.Repositories;
+﻿using DientesLimpios.Application.Interfaces.Persistence;
+using DientesLimpios.Application.Interfaces.Repositories;
 using DientesLimpios.Application.Utilities.Common;
 using DientesLimpios.Application.Utilities.Mediator;
 using DientesLimpios.Domain.Common.ResultPattern;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 
 namespace DientesLimpios.Application.UseCases.Dentists.Queries.GetDentistList
 {
-    public class GetDentistListHandler(IDentistRepository repository, ILogger<GetDentistListHandler> logger) : IRequestHandler<GetDentistListQuery, Result<PagedDTO<DentistListDTO>>>
+    public class GetDentistListHandler(IDentistRepository repository, IApplicationDbContext db, ILogger<GetDentistListHandler> logger) : IRequestHandler<GetDentistListQuery, Result<PagedDTO<DentistListDTO>>>
     {
         public async Task<Result<PagedDTO<DentistListDTO>>> Handle(GetDentistListQuery request, CancellationToken cancellationToken)
         {
             logger.LogInformation("Retrieving dentist list");
 
             var filteredDentists = await repository.GetFiltered(request, cancellationToken);
-            var totalDentists = await repository.GetTotalRecordCount();
+            var totalDentists = await db.Dentists.CountAsync(cancellationToken);
 
             var filteredDentistsDTO = filteredDentists.Select(dentist => dentist.ADto()).ToList();
 

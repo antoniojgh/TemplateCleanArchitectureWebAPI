@@ -1,6 +1,5 @@
-﻿using DientesLimpios.Application.UseCases.Offices.Commands.CreateOffice;
-using DientesLimpios.Application.Interfaces.Persistence;
-using DientesLimpios.Application.Interfaces.Repositories;
+﻿using DientesLimpios.Application.Interfaces.Persistence;
+using DientesLimpios.Application.UseCases.Offices.Commands.CreateOffice;
 using DientesLimpios.Domain.Entities;
 using DientesLimpios.Domain.Errors;
 using FluentAssertions; // For Should()
@@ -14,20 +13,18 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
     {
         // Fields are private and readonly because they are set in the constructor
         // and never change during the test execution.
-        private readonly IOfficeRepository _repositorio;
+        private readonly IApplicationDbContext _db;
         private readonly CreateOfficeCommandValidator _validator;
-        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<CreateOfficeHandler> _logger;
         private readonly CreateOfficeHandler _handler;
 
         public CreateOfficeUseCaseTests()
         {
-            _repositorio = Substitute.For<IOfficeRepository>();
-            _unitOfWork = Substitute.For<IUnitOfWork>();
+            _db = Substitute.For<IApplicationDbContext>();
             _logger = Substitute.For<ILogger<CreateOfficeHandler>>();
             _validator = new CreateOfficeCommandValidator();
 
-            _handler = new CreateOfficeHandler(_repositorio, _unitOfWork, _logger);
+            _handler = new CreateOfficeHandler(_db, _logger);
         }
 
         // First we write the Handler-specific tests:
@@ -40,8 +37,8 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
 
             // Capture whatever Office the handler passes to Add.
             Office? consultorioCreado = null;
-            _repositorio.Add(Arg.Do<Office>(c => consultorioCreado = c))
-                        .Returns(c => c.Arg<Office>());   // echo back what was passed
+            _db.Offices.When(s => s.Add(Arg.Any<Office>()))
+                       .Do(call => consultorioCreado = call.Arg<Office>());
 
             // Act
             var result = await _handler.Handle(command, CancellationToken.None);
@@ -51,7 +48,8 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
             consultorioCreado.Should().NotBeNull();
             consultorioCreado!.Name.Should().Be("Office A");
             result.Value.Should().Be(consultorioCreado.Id);
-            await _unitOfWork.Received(1).SaveChanges();
+            _db.Offices.Received(1).Add(Arg.Any<Office>());
+            await _db.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
         }
 
         [Theory]
@@ -69,8 +67,8 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
             // Assert
             result.IsFailure.Should().BeTrue();
             result.Error.Should().Be(DomainErrors.Office.NameRequired);
-            await _repositorio.DidNotReceive().Add(Arg.Any<Office>());
-            await _unitOfWork.DidNotReceive().SaveChanges();
+            _db.Offices.DidNotReceive().Add(Arg.Any<Office>());
+            await _db.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
         }
 
 

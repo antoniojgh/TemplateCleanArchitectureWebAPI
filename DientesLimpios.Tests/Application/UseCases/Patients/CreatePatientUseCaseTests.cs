@@ -1,7 +1,5 @@
-﻿using DientesLimpios.Application.UseCases.Dentists.Commands.CreateDentist;
+﻿using DientesLimpios.Application.Interfaces.Persistence;
 using DientesLimpios.Application.UseCases.Patients.Commands.CreatePatient;
-using DientesLimpios.Application.Interfaces.Persistence;
-using DientesLimpios.Application.Interfaces.Repositories;
 using DientesLimpios.Domain.Entities;
 using DientesLimpios.Domain.Errors;
 using FluentAssertions;
@@ -13,8 +11,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Patients
 {
     public class CreatePatientUseCaseTests
     {
-        private readonly IPatientRepository _repositorio;
-        private readonly IUnitOfWork _unitOfWork;
+        private readonly IApplicationDbContext _db;
         private readonly CreatePatientHandler _handler;
         private readonly CreatePatientCommandValidator _validator;
         private readonly ILogger<CreatePatientHandler> _logger;
@@ -22,15 +19,12 @@ namespace DientesLimpios.Tests.Application.UseCases.Patients
         public CreatePatientUseCaseTests()
         {
             // Here you should initialize the mocks or stubs needed for the tests
-            // For example, you could use NSubstitute to create a mock of IPatientRepository
-            // and IUnitOfWork, and then pass them to the handler and validator.
 
-            _repositorio = Substitute.For<IPatientRepository>();
-            _unitOfWork = Substitute.For<IUnitOfWork>();
+            _db = Substitute.For<IApplicationDbContext>();
             _logger = Substitute.For<ILogger<CreatePatientHandler>>();
             _validator = new CreatePatientCommandValidator();
 
-            _handler = new CreatePatientHandler(_repositorio, _unitOfWork, _logger);
+            _handler = new CreatePatientHandler(_db, _logger);
         }
 
         // First we write the Handler-specific tests:
@@ -44,8 +38,8 @@ namespace DientesLimpios.Tests.Application.UseCases.Patients
             // Capture whatever Patient the handler passes to Add.
             Patient? pacienteCreadoEnHandler = null;
 
-            _repositorio.Add(Arg.Do<Patient>(d => pacienteCreadoEnHandler = d))
-                        .Returns(c => c.Arg<Patient>());   // echo back what was passed
+            _db.Patients.When(s => s.Add(Arg.Any<Patient>()))
+                        .Do(call => pacienteCreadoEnHandler = call.Arg<Patient>());
 
             // Act
             var result = await _handler.Handle(command, CancellationToken.None);
@@ -56,8 +50,8 @@ namespace DientesLimpios.Tests.Application.UseCases.Patients
             pacienteCreadoEnHandler!.Name.Should().Be("Felipe");
             pacienteCreadoEnHandler.Email.Value.Should().Be("felipe@ejemplo.com");
             result.Value.Should().Be(pacienteCreadoEnHandler.Id);   // ← compare against the captured Patient
-            await _repositorio.Received(1).Add(Arg.Any<Patient>());
-            await _unitOfWork.Received(1).SaveChanges();
+            _db.Patients.Received(1).Add(Arg.Any<Patient>());
+            await _db.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
         }
 
         [Theory]
@@ -75,8 +69,8 @@ namespace DientesLimpios.Tests.Application.UseCases.Patients
             // Assert
             result.IsFailure.Should().BeTrue();
             result.Error.Should().Be(DomainErrors.Patient.NameRequired);
-            await _repositorio.DidNotReceive().Add(Arg.Any<Patient>());
-            await _unitOfWork.DidNotReceive().SaveChanges();
+            _db.Patients.DidNotReceive().Add(Arg.Any<Patient>());
+            await _db.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
         }
 
         [Theory]
@@ -94,8 +88,8 @@ namespace DientesLimpios.Tests.Application.UseCases.Patients
             // Assert
             result.IsFailure.Should().BeTrue();
             result.Error.Should().Be(DomainErrors.Email.Empty);
-            await _repositorio.DidNotReceive().Add(Arg.Any<Patient>());
-            await _unitOfWork.DidNotReceive().SaveChanges();
+            _db.Patients.DidNotReceive().Add(Arg.Any<Patient>());
+            await _db.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
         }
 
         [Theory]
@@ -112,8 +106,8 @@ namespace DientesLimpios.Tests.Application.UseCases.Patients
             // Assert
             result.IsFailure.Should().BeTrue();
             result.Error.Should().Be(DomainErrors.Email.InvalidFormat);
-            await _repositorio.DidNotReceive().Add(Arg.Any<Patient>());
-            await _unitOfWork.DidNotReceive().SaveChanges();
+            _db.Patients.DidNotReceive().Add(Arg.Any<Patient>());
+            await _db.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
         }
 
         // Luego hacemos las pruebas propias de la validacion, ya que el validator

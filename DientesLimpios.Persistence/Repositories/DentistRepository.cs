@@ -6,15 +6,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DientesLimpios.Persistence.Repositories
 {
-    public class DentistRepository : Repository<Dentist>, IDentistRepository
+    public sealed class DentistRepository(DientesLimpiosDbContext context) : IDentistRepository
     {
-        private readonly DientesLimpiosDbContext context;
-
-        public DentistRepository(DientesLimpiosDbContext context) : base(context)
-        {
-            this.context = context;
-        }
-
         public async Task<IEnumerable<Dentist>> GetFiltered(DentistFilterDTO filter, CancellationToken cancellationToken = default)
         {
             var queryable = context.Dentists.AsQueryable();

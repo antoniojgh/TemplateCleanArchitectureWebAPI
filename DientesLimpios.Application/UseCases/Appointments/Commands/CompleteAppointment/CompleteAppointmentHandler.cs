@@ -7,9 +7,8 @@ using Microsoft.Extensions.Logging;
 
 namespace DientesLimpios.Application.UseCases.Appointments.Commands.CompleteAppointment
 {
-    public class CompleteAppointmentHandler(IAppointmentRepository repository, IUnitOfWork unitOfWork, ILogger<CompleteAppointmentHandler> logger) : IRequestHandler<CompleteAppointmentCommand, Result>
+    public class CompleteAppointmentHandler(IApplicationDbContext db, IAppointmentRepository repository, ILogger<CompleteAppointmentHandler> logger) : IRequestHandler<CompleteAppointmentCommand, Result>
     {
-
         public async Task<Result> Handle(CompleteAppointmentCommand request, CancellationToken cancellationToken)
         {
             logger.LogInformation("Completing appointment with ID: {AppointmentId}", request.Id);
@@ -23,8 +22,7 @@ namespace DientesLimpios.Application.UseCases.Appointments.Commands.CompleteAppo
             if (completarResult.IsFailure)
                 return completarResult;
 
-            await repository.Update(appointment);
-            await unitOfWork.SaveChanges();
+            await db.SaveChangesAsync(cancellationToken);
 
             logger.LogInformation("Appointment completed successfully with ID: {AppointmentId}", request.Id);
 

@@ -5,14 +5,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DientesLimpios.Persistence.Repositories
 {
-    public class AppointmentRepository : Repository<Appointment>, IAppointmentRepository
+    public sealed class AppointmentRepository(DientesLimpiosDbContext context) : IAppointmentRepository
     {
-        private readonly DientesLimpiosDbContext context;
-
-        public AppointmentRepository(DientesLimpiosDbContext context) : base(context)
-        {
-            this.context = context;
-        }
 
         public async Task<bool> AppointmentOverlaps(Guid dentistId, DateTime start, DateTime end, CancellationToken cancellationToken = default)
         {
