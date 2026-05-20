@@ -46,6 +46,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
 
             // Assert
             result.IsSuccess.Should().BeTrue();
+            dbSet.Received(1).Remove(office);
             await _db.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
         }
 
