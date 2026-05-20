@@ -18,9 +18,9 @@ namespace DientesLimpios.Application.UseCases.Appointments.Commands.CompleteAppo
             if (appointment is null)
                 return Result.Failure(DomainErrors.Appointment.NotFound);
 
-            var completarResult = appointment.Complete();
-            if (completarResult.IsFailure)
-                return completarResult;
+            var completeResult = appointment.Complete();
+            if (completeResult.IsFailure)
+                return completeResult;
 
             await db.SaveChangesAsync(cancellationToken);
 

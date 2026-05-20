@@ -25,7 +25,9 @@ namespace DientesLimpios.API.Controllers
         {
             var result = await mediator.Send(query, ct);
 
-            HttpContext.InsertPaginationInHeader(result.Value.Total);
+            if (result.IsSuccess && result.Value != null)
+                HttpContext.InsertPaginationInHeader(result.Value.Total);
+            
 
             return result.ToActionResult(HttpContext);
         }
@@ -41,23 +43,23 @@ namespace DientesLimpios.API.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Post(CreatePatientDTO crearPatientDTO, CancellationToken ct)
+        public async Task<IActionResult> Post(CreatePatientDTO createPatientDto, CancellationToken ct)
         {
-            var command = new CreatePatientCommand { Name = crearPatientDTO.Name, Email = crearPatientDTO.Email };
+            var command = new CreatePatientCommand { Name = createPatientDto.Name, Email = createPatientDto.Email };
 
             var result = await mediator.Send(command, ct);
 
-            return result.ToActionResult(HttpContext);
+            return result.ToCreatedResult(HttpContext, id => $"/api/v1/patients/{id}");
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> Put(Guid id, UpdatePatientDTO actualizarPatientDTO, CancellationToken ct)
+        public async Task<IActionResult> Put(Guid id, UpdatePatientDTO updatePatientDto, CancellationToken ct)
         {
             var command = new UpdatePatientCommand
             {
                 Id = id,
-                Name = actualizarPatientDTO.Name,
-                Email = actualizarPatientDTO.Email
+                Name = updatePatientDto.Name,
+                Email = updatePatientDto.Email
             };
 
             var result = await mediator.Send(command, ct);

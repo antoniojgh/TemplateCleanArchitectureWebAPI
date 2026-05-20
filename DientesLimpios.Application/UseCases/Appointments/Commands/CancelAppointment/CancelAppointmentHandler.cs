@@ -20,9 +20,9 @@ namespace DientesLimpios.Application.UseCases.Appointments.Commands.CancelAppoin
             if (appointment is null)
                 return Result.Failure(DomainErrors.Appointment.NotFound);
 
-            var cancelarResult = appointment.Cancel();
-            if (cancelarResult.IsFailure)
-                return cancelarResult;
+            var cancelResult = appointment.Cancel();
+            if (cancelResult.IsFailure)
+                return cancelResult;
 
             await db.SaveChangesAsync(cancellationToken);
 

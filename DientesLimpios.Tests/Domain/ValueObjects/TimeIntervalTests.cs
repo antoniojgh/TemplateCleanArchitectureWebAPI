@@ -7,12 +7,12 @@ namespace DientesLimpios.Tests.Domain.ValueObjects
     public class TimeIntervalTests
     {
         [Fact]
-        public void Crear_FechaInicioPosteriorAFin_RetornaFailureStartGreaterThanOrEqualToEnd()
+        public void Create_StartAfterEnd_ReturnsFailureStartGreaterThanOrEqualToEnd()
         {
-            var ahora = DateTime.UtcNow;
+            var now = DateTime.UtcNow;
 
             // Act
-            var result = TimeInterval.Create(ahora, ahora.AddDays(-1));
+            var result = TimeInterval.Create(now, now.AddDays(-1));
 
             // Assert
             result.IsFailure.Should().BeTrue();
@@ -20,12 +20,12 @@ namespace DientesLimpios.Tests.Domain.ValueObjects
         }
 
         [Fact]
-        public void Crear_FechaInicioIgualAFin_RetornaFailureStartGreaterThanOrEqualToEnd()
+        public void Create_StartEqualToEnd_ReturnsFailureStartGreaterThanOrEqualToEnd()
         {
-            var ahora = DateTime.UtcNow;
+            var now = DateTime.UtcNow;
 
             // Act
-            var result = TimeInterval.Create(ahora, ahora);
+            var result = TimeInterval.Create(now, now);
 
             // Assert
             result.IsFailure.Should().BeTrue();
@@ -33,7 +33,7 @@ namespace DientesLimpios.Tests.Domain.ValueObjects
         }
 
         [Fact]
-        public void Crear_ParametrosCorrectos_CreaInstanciaCorrecta()
+        public void Create_ValidParameters_CreatesInstanceCorrectly()
         {
             // Arrange
             var start = DateTime.UtcNow;

@@ -29,7 +29,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
         // First we write the Handler-specific tests:
 
         [Fact]
-        public async Task Handle_CuandoOfficeExiste_BorraOfficeYPersiste()
+        public async Task Handle_OfficeExists_RemovesOfficeAndPersists()
         {
             // Arrange
             var officeResult = Office.Create("Office A");
@@ -51,7 +51,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
         }
 
         [Fact]
-        public async Task Handle_CuandoOfficeNoExiste_RetornaFailureNotFound()
+        public async Task Handle_OfficeNotFound_ReturnsFailureNotFound()
         {
             // Arrange
             var command = new DeleteOfficeCommand { Id = Guid.NewGuid() };
@@ -70,12 +70,11 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
         }
 
 
-        // Luego hacemos las pruebas propias de la validacion, ya que el validator
-        // es un componente externo al handler, ya no validamos dentro del Handler sino que lo hacemos medieante
-        // un validator externo que se inyecta en el handler mediante la clase "ValidationBehavior"
+        // The validator is an external component; validation is no longer done inside the Handler
+        // but through an external validator injected via the "ValidationBehavior" class
 
         [Fact]
-        public void Validar_IdVacio_GeneraErrorDeValidacion()
+        public void Validate_EmptyId_GeneratesValidationError()
         {
             // Arrange
             var command = new DeleteOfficeCommand { Id = Guid.Empty};
@@ -88,7 +87,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
         }
 
         [Fact]
-        public void Validar_IdValido_NoGeneraErrorDeValidacion()
+        public void Validate_ValidId_GeneratesNoValidationError()
         {
             // Arrange
             var command = new DeleteOfficeCommand { Id = Guid.NewGuid()};

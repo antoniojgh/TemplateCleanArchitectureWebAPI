@@ -9,7 +9,7 @@ namespace DientesLimpios.Domain.ValueObjects
 
         private Email() { }   // EF Core
 
-        private Email(string valor) => Value = valor;
+        private Email(string value) => Value = value;
 
         public static Result<Email> Create(string valor)
         {

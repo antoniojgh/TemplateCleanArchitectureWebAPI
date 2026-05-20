@@ -18,9 +18,9 @@ namespace DientesLimpios.Application.UseCases.Offices.Commands.UpdateOffice
             if (office is null)
                 return Result.Failure(DomainErrors.Office.NotFound);
 
-            var actualizarResult = office.UpdateName(request.Name);
-            if (actualizarResult.IsFailure)
-                return actualizarResult;
+            var updateResult = office.UpdateName(request.Name);
+            if (updateResult.IsFailure)
+                return updateResult;
 
             await db.SaveChangesAsync(cancellationToken);
 

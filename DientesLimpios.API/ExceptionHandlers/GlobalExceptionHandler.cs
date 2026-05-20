@@ -1,5 +1,4 @@
 ﻿using DientesLimpios.Application.Exceptions;
-using DientesLimpios.Domain.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,11 +14,14 @@ namespace DientesLimpios.API.ExceptionHandlers
                 httpContext.Request.Method,
                 httpContext.Request.Path);
 
+            // Safety net: these exception types are not thrown by current Domain/Application
+            // code (everything uses Result now), but the handler retains the mapping for
+            // future code paths that may still rely on exceptions for control flow.
+
             var (status, title) = exception switch
             {
                 NotFoundException => (StatusCodes.Status404NotFound, "Resource not found"),
                 ValidationException => (StatusCodes.Status400BadRequest, "Validation failed"),
-                BusinessRuleException => (StatusCodes.Status400BadRequest, "Business rule violated"),
                 MediatorException => (StatusCodes.Status500InternalServerError, "Dispatch error"),
                 _ => (StatusCodes.Status500InternalServerError, "Internal server error"),
             };

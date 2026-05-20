@@ -30,25 +30,25 @@ namespace DientesLimpios.Tests.Application.UseCases.Dentists
         // First we write the Handler-specific tests:
 
         [Fact]
-        public async Task Handle_DatosValidos_CreaDentistPersisteYRetornaId()
+        public async Task Handle_ValidData_CreatesDentistPersistsAndReturnsId()
         {
             // Arrange
             var command = new CreateDentistCommand { Name = "Felipe", Email = "felipe@ejemplo.com" };
 
             // Capture whatever Dentist the handler passes to Add.
-            Dentist? dentistaCreadoEnHandler = null;
+            Dentist? createdDentist = null;
             _db.Dentists.When(s => s.Add(Arg.Any<Dentist>()))
-                        .Do(call => dentistaCreadoEnHandler = call.Arg<Dentist>());
+                        .Do(call => createdDentist = call.Arg<Dentist>());
 
             // Act
             var result = await _handler.Handle(command, CancellationToken.None);
 
             // Assert
             result.IsSuccess.Should().BeTrue();
-            dentistaCreadoEnHandler.Should().NotBeNull();
-            dentistaCreadoEnHandler!.Name.Should().Be("Felipe");
-            dentistaCreadoEnHandler.Email.Value.Should().Be("felipe@ejemplo.com");
-            result.Value.Should().Be(dentistaCreadoEnHandler.Id);   // ← compare against the captured Dentist
+            createdDentist.Should().NotBeNull();
+            createdDentist!.Name.Should().Be("Felipe");
+            createdDentist.Email.Value.Should().Be("felipe@ejemplo.com");
+            result.Value.Should().Be(createdDentist.Id);   // ← compare against the captured Dentist
             _db.Dentists.Received(1).Add(Arg.Any<Dentist>());
             await _db.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
         }
@@ -57,7 +57,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Dentists
         [InlineData(null)]
         [InlineData("")]
         [InlineData("   ")]
-        public async Task Handle_NombreInvalido_RetornaFailureYNoPersiste(string? name)
+        public async Task Handle_InvalidName_ReturnsFailureAndDoesNotPersist(string? name)
         {
             // Arrange
             var command = new CreateDentistCommand { Name = name!, Email = "felipe@ejemplo.com" };
@@ -76,7 +76,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Dentists
         [InlineData(null)]
         [InlineData("")]
         [InlineData("   ")]
-        public async Task Handle_EmailVacio_RetornaFailureEmailVacio(string? email)
+        public async Task Handle_EmptyEmail_ReturnsFailureEmailEmpty(string? email)
         {
             // Arrange
             var command = new CreateDentistCommand { Name = "Felipe", Email = email! };
@@ -94,7 +94,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Dentists
         [Theory]
         [InlineData("EmailInvalido")]
         [InlineData("sin-arroba.com")]
-        public async Task Handle_EmailInvalidFormat_RetornaFailureInvalidFormat(string? email)
+        public async Task Handle_InvalidEmailFormat_ReturnsFailureInvalidFormat(string? email)
         {
             // Arrange
             var command = new CreateDentistCommand { Name = "Felipe", Email = email! };
@@ -109,15 +109,14 @@ namespace DientesLimpios.Tests.Application.UseCases.Dentists
             await _db.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
         }
 
-        // Luego hacemos las pruebas propias de la validacion, ya que el validator
-        // es un componente externo al handler, ya no validamos dentro del Handler sino que lo hacemos medieante
-        // un validator externo que se inyecta en el handler mediante la clase "ValidationBehavior"
+        // The validator is an external component; validation is no longer done inside the Handler
+        // but through an external validator injected via the "ValidationBehavior" class
 
         [Theory]
         [InlineData(null)]
         [InlineData("")]
         [InlineData("   ")]
-        public void Validar_NombreInvalido_GeneraErrorDeValidacion(string? name)
+        public void Validate_InvalidName_GeneratesValidationError(string? name)
         {
             // Arrange
             var command = new CreateDentistCommand { Name = name!, Email = "felipe@ejemplo.com" };
@@ -135,7 +134,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Dentists
         [InlineData("   ")]
         [InlineData("EmailInvalido")]      // no @
         [InlineData("sin-arroba.com")]     // no @
-        public void Validar_EmailInvalido_GeneraErrorDeValidacion(string? email)
+        public void Validate_InvalidEmail_GeneratesValidationError(string? email)
         {
             // Arrange
             var command = new CreateDentistCommand { Name = "Felipe", Email = email! };
@@ -148,7 +147,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Dentists
         }
 
         [Fact]
-        public void Validar_NombreYEmailValidos_NoGeneraErrorDeValidacion()
+        public void Validate_ValidNameAndEmail_GeneratesNoValidationError()
         {
             // Arrange
             var command = new CreateDentistCommand { Name = "Felipe", Email = "felipe@ejemplo.com" };

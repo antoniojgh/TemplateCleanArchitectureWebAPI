@@ -10,7 +10,7 @@ namespace DientesLimpios.Tests.Domain.Entities
         [InlineData(null)]
         [InlineData("")]
         [InlineData("   ")]
-        public void Crear_NombreInvalido_RetornaFailureNameRequired(string? name)
+        public void Create_InvalidName_ReturnsFailureNameRequired(string? name)
         {
             // Act
             var result = Dentist.Create(name!, "felipe@ejemplo.com");
@@ -25,7 +25,7 @@ namespace DientesLimpios.Tests.Domain.Entities
         [InlineData(null)]
         [InlineData("")]
         [InlineData("   ")]
-        public void Crear_EmailInvalido_RetornaFailureEmailVacio(string? email)
+        public void Create_InvalidEmail_ReturnsFailureEmailEmpty(string? email)
         {
             // Act
             var result = Dentist.Create("Felipe", email!);
@@ -36,7 +36,7 @@ namespace DientesLimpios.Tests.Domain.Entities
         }
 
         [Fact]
-        public void Crear_EmailInvalidFormat_RetornaFailureInvalidFormat()
+        public void Create_InvalidEmailFormat_ReturnsFailureInvalidFormat()
         {
             // Act
             var result = Dentist.Create("Felipe", "EmailInvalido");
@@ -47,7 +47,7 @@ namespace DientesLimpios.Tests.Domain.Entities
         }
 
         [Fact]
-        public void Crear_DentistValido_CreaInstanciaCorrecta()
+        public void Create_ValidDentist_CreatesInstanceCorrectly()
         {
             // Act
             var result = Dentist.Create("Felipe", "felipe@ejemplo.com");

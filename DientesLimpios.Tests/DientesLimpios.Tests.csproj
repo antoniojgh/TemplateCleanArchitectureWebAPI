@@ -17,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\DientesLimpios.API\DientesLimpios.API.csproj" />
     <ProjectReference Include="..\DientesLimpios.Application\DientesLimpios.Application.csproj" />
     <ProjectReference Include="..\DientesLimpios.Domain\DientesLimpios.Domain.csproj" />
   </ItemGroup>

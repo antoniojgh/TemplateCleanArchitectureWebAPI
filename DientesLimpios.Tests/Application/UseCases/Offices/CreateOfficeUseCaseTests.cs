@@ -30,24 +30,24 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
         // First we write the Handler-specific tests:
 
         [Fact]
-        public async Task Handle_CommandValido_CreaOfficeYRetornaSuId()
+        public async Task Handle_ValidCommand_CreatesOfficeAndReturnsId()
         {
             // Arrange
             var command = new CreateOfficeCommand { Name = "Office A" };
 
             // Capture whatever Office the handler passes to Add.
-            Office? consultorioCreado = null;
+            Office? createdOffice = null;
             _db.Offices.When(s => s.Add(Arg.Any<Office>()))
-                       .Do(call => consultorioCreado = call.Arg<Office>());
+                       .Do(call => createdOffice = call.Arg<Office>());
 
             // Act
             var result = await _handler.Handle(command, CancellationToken.None);
 
             // Assert
             result.IsSuccess.Should().BeTrue();
-            consultorioCreado.Should().NotBeNull();
-            consultorioCreado!.Name.Should().Be("Office A");
-            result.Value.Should().Be(consultorioCreado.Id);
+            createdOffice.Should().NotBeNull();
+            createdOffice!.Name.Should().Be("Office A");
+            result.Value.Should().Be(createdOffice.Id);
             _db.Offices.Received(1).Add(Arg.Any<Office>());
             await _db.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
         }
@@ -56,7 +56,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
         [InlineData(null)]
         [InlineData("")]
         [InlineData("   ")]
-        public async Task Handle_NombreInvalido_RetornaFailureYNoPersiste(string? name)
+        public async Task Handle_InvalidName_ReturnsFailureAndDoesNotPersist(string? name)
         {
             // Arrange
             var command = new CreateOfficeCommand { Name = name! };
@@ -80,7 +80,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
         [InlineData(null)]
         [InlineData("")]
         [InlineData("   ")]
-        public void Validar_NombreInvalido_GeneraErrorDeValidacion(string? name)
+        public void Validate_InvalidName_GeneratesValidationError(string? name)
         {
             // Arrange
             var command = new CreateOfficeCommand { Name = name! };
@@ -93,7 +93,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
         }
 
         [Fact]
-        public void Validator_NombreValido_NoGeneraErrorDeValidacion()
+        public void Validate_ValidName_GeneratesNoValidationError()
         {
             // Arrange
             var command = new CreateOfficeCommand { Name = "Office Central" };

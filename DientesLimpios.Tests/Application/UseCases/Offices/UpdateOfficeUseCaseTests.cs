@@ -31,7 +31,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
         // First we write the Handler-specific tests:
 
         [Fact]
-        public async Task Handle_CuandoOfficeExiste_ActualizaNombreYPersiste()
+        public async Task Handle_OfficeExists_UpdatesNameAndPersists()
         {
             // Arrange
             var officeResult = Office.Create("Office A");
@@ -55,7 +55,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
         }
 
         [Fact]
-        public async Task Handle_CuandoOfficeNoExiste_RetornaFailureNotFound()
+        public async Task Handle_OfficeNotFound_ReturnsFailureNotFound()
         {
             // Arrange
             var command = new UpdateOfficeCommand { Id = Guid.NewGuid(), Name = "Name" };
@@ -80,7 +80,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
         [InlineData(null)]
         [InlineData("")]
         [InlineData("   ")]
-        public async Task Validator_NombreVacio_GeneraErrorDeValidacion(string? name)
+        public async Task Validator_EmptyName_GeneratesValidationError(string? name)
         {
             // Arrange
             var command = new UpdateOfficeCommand { Id = Guid.NewGuid(), Name = name! };
@@ -93,7 +93,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
         }
 
         [Fact]
-        public void Validator_NombreValido_NoGeneraErrorDeValidacion()
+        public void Validator_ValidName_GeneratesNoValidationError()
         {
             // Arrange
             var command = new UpdateOfficeCommand { Id = Guid.NewGuid(), Name = "Office Central" };

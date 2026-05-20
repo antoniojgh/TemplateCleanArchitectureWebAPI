@@ -24,7 +24,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
 
 
         [Fact]
-        public async Task Handle_CuandoHayOffices_RetornaListaDeOfficeListDTO()
+        public async Task Handle_OfficesExist_ReturnsOfficeListDTOs()
         {
             // Arrange
             var offices = new List<Office>
@@ -51,7 +51,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
         }
 
         [Fact]
-        public async Task Handle_CuandoNoHayOffices_RetornaListaVacia()
+        public async Task Handle_NoOfficesExist_ReturnsEmptyList()
         {
             // Arrange
             var dbSet = new List<Office>().BuildMockDbSet();

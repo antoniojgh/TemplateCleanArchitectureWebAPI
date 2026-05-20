@@ -37,20 +37,20 @@ namespace DientesLimpios.API.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Post(CreateAppointmentDTO crearAppointmentDTO, CancellationToken ct)
+        public async Task<IActionResult> Post(CreateAppointmentDTO createAppointmentDto, CancellationToken ct)
         {
             var command = new CreateAppointmentCommand
             {
-                OfficeId = crearAppointmentDTO.OfficeId,
-                DentistId = crearAppointmentDTO.DentistId,
-                PatientId = crearAppointmentDTO.PatientId,
-                StartDate = crearAppointmentDTO.StartDate,
-                EndDate = crearAppointmentDTO.EndDate
+                OfficeId = createAppointmentDto.OfficeId,
+                DentistId = createAppointmentDto.DentistId,
+                PatientId = createAppointmentDto.PatientId,
+                StartDate = createAppointmentDto.StartDate,
+                EndDate = createAppointmentDto.EndDate
             };
 
             var result = await mediator.Send(command, ct);
 
-            return result.ToActionResult(HttpContext);
+            return result.ToCreatedResult(HttpContext, id => $"/api/v1/appointments/{id}");
         }
 
         [HttpPost("complete/{id}")]

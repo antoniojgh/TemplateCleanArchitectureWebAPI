@@ -41,19 +41,19 @@ namespace DientesLimpios.API.Controllers
 
 
         [HttpPost]
-        public async Task<IActionResult> Post(CreateOfficeDTO crearOfficeDTO, CancellationToken ct)
+        public async Task<IActionResult> Post(CreateOfficeDTO createOfficeDto, CancellationToken ct)
         {
-            var command = new CreateOfficeCommand { Name = crearOfficeDTO.Name };
+            var command = new CreateOfficeCommand { Name = createOfficeDto.Name };
 
             var result = await mediator.Send(command, ct);
 
-            return result.ToActionResult(HttpContext);
+            return result.ToCreatedResult(HttpContext, id => $"/api/v1/offices/{id}");
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> Put(Guid id, UpdateOfficeDTO actualizarOfficeDTO, CancellationToken ct)
+        public async Task<IActionResult> Put(Guid id, UpdateOfficeDTO updateOfficeDto, CancellationToken ct)
         {
-            var command = new UpdateOfficeCommand { Id = id, Name = actualizarOfficeDTO.Name };
+            var command = new UpdateOfficeCommand { Id = id, Name = updateOfficeDto.Name };
 
             var result = await mediator.Send(command, ct);
 

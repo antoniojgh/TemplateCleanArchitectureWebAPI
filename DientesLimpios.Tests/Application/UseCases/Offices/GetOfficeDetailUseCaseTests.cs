@@ -25,7 +25,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
 
 
         [Fact]
-        public async Task Handle_OfficeExiste_RetornaDTO()
+        public async Task Handle_OfficeExists_ReturnsDTO()
         {
             // Arrange
             var officeResult = Office.Create("Office A");
@@ -47,7 +47,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
         }
 
         [Fact]
-        public async Task Handle_OfficeNoExiste_RetornaFailureNotFound()
+        public async Task Handle_OfficeNotFound_ReturnsFailureNotFound()
         {
             // Arrange
             var id = Guid.NewGuid();

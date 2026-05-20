@@ -1,7 +1,6 @@
 ﻿using DientesLimpios.Domain.Common;
 using DientesLimpios.Domain.Common.ResultPattern;
 using DientesLimpios.Domain.Errors;
-using DientesLimpios.Domain.Exceptions;
 using DientesLimpios.Domain.ValueObjects;
 
 namespace DientesLimpios.Domain.Entities

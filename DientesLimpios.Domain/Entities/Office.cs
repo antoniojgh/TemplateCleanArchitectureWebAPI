@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using DientesLimpios.Domain.Common;
+﻿using DientesLimpios.Domain.Common;
 using DientesLimpios.Domain.Common.ResultPattern;
 using DientesLimpios.Domain.Errors;
-using DientesLimpios.Domain.Exceptions;
 
 namespace DientesLimpios.Domain.Entities
 {

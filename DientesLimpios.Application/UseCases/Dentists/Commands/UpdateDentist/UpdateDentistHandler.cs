@@ -18,13 +18,13 @@ namespace DientesLimpios.Application.UseCases.Dentists.Commands.UpdateDentist
             if (dentist is null)
                 return Result.Failure(DomainErrors.Dentist.NotFound);
 
-            var actualizarNombreResult = dentist.UpdateName(request.Name);
-            if (actualizarNombreResult.IsFailure)
-                return actualizarNombreResult;
+            var updateNameResult = dentist.UpdateName(request.Name);
+            if (updateNameResult.IsFailure)
+                return updateNameResult;
 
-            var actualizarEmailResult = dentist.UpdateEmail(request.Email);
-            if (actualizarEmailResult.IsFailure)
-                return actualizarEmailResult;
+            var updateEmailResult = dentist.UpdateEmail(request.Email);
+            if (updateEmailResult.IsFailure)
+                return updateEmailResult;
 
             await db.SaveChangesAsync(cancellationToken);
 

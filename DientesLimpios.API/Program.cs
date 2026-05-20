@@ -28,10 +28,10 @@ try
 
     // Add services to the container.
 
-    builder.Services.AddControllers(opciones =>
+    builder.Services.AddControllers(options =>
     {
         // Adds a global authorization filter to protect all endpoints by default
-        opciones.Filters.Add(new AuthorizeFilter("esadmin"));
+        options.Filters.Add(new AuthorizeFilter("esadmin"));
     });
 
     // Dependency injection for Application, Persistence and Infrastructure layers

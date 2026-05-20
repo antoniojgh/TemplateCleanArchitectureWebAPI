@@ -11,7 +11,7 @@ namespace DientesLimpios.Tests.Domain.Entities
         [InlineData(null)]
         [InlineData("")]
         [InlineData("   ")]
-        public void Crear_NombreInvalido_RetornaFailureNameRequired(string? name)
+        public void Create_InvalidName_ReturnsFailureNameRequired(string? name)
         {
             // Act
             var result = Office.Create(name!);
@@ -22,7 +22,7 @@ namespace DientesLimpios.Tests.Domain.Entities
         }
 
         [Fact]
-        public void Crear_NombreValido_CreaInstanciaCorrecta()
+        public void Create_ValidName_CreatesInstanceCorrectly()
         {
             // Act
             var result = Office.Create("Office Central");

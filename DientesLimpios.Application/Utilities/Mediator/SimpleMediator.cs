@@ -1,5 +1,4 @@
 ﻿using DientesLimpios.Application.Exceptions;
-using DientesLimpios.Application.Utilities.ResultPattern;
 using DientesLimpios.Domain.Common.ResultPattern;
 using FluentValidation;
 

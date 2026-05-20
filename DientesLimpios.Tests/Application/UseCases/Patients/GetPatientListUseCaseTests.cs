@@ -12,32 +12,32 @@ namespace DientesLimpios.Tests.Application.UseCases.Patients
     public class GetPatientListUseCaseTests
     {
         private readonly IApplicationDbContext _db;
-        private readonly IPatientRepository _repositorio;
+        private readonly IPatientRepository _repository;
         private readonly ILogger<GetPatientListHandler> _logger;
         private readonly GetPatientListHandler _handler;
 
         public GetPatientListUseCaseTests()
         {
             _db = Substitute.For<IApplicationDbContext>();
-            _repositorio = Substitute.For<IPatientRepository>();
+            _repository = Substitute.For<IPatientRepository>();
             _logger = Substitute.For<ILogger<GetPatientListHandler>>();
 
-            _handler = new GetPatientListHandler(_repositorio, _db, _logger);
+            _handler = new GetPatientListHandler(_repository, _db, _logger);
         }
 
         [Fact]
-        public async Task Handle_CuandoHayPatients_RetornaPagedConDTOsCorrectos()
+        public async Task Handle_PatientsExist_ReturnsPagedDTOsCorrectly()
         {
             // Arrange
-            var pagina = 1;
-            var registrosPorPagina = 2;
+            var page = 1;
+            var pageSize = 2;
 
-            var paciente1 = Patient.Create("Felipe", "felipe@ejemplo.com").Value;
-            var paciente2 = Patient.Create("Claudia", "claudia@ejemplo.com").Value;
+            var patient1 = Patient.Create("Felipe", "felipe@ejemplo.com").Value;
+            var patient2 = Patient.Create("Claudia", "claudia@ejemplo.com").Value;
 
-            var patients = new List<Patient> { paciente1, paciente2 };
+            var patients = new List<Patient> { patient1, patient2 };
 
-            _repositorio.GetFiltered(Arg.Any<PatientFilterDTO>(), Arg.Any<CancellationToken>()).Returns(patients);
+            _repository.GetFiltered(Arg.Any<PatientFilterDTO>(), Arg.Any<CancellationToken>()).Returns(patients);
 
             var allPatients = Enumerable.Range(0, 10).Select(i => Patient.Create($"Name{i}", $"email{i}@test.com").Value).ToList();
             var dbSet = allPatients.BuildMockDbSet();
@@ -45,8 +45,8 @@ namespace DientesLimpios.Tests.Application.UseCases.Patients
 
             var request = new GetPatientListQuery
             {
-                Pagina = pagina,
-                RegistrosPorPagina = registrosPorPagina
+                Pagina = page,
+                RegistrosPorPagina = pageSize
             };
 
             // Act
@@ -60,30 +60,30 @@ namespace DientesLimpios.Tests.Application.UseCases.Patients
             result.Value.Elementos[0].Email.Should().Be("felipe@ejemplo.com");
             result.Value.Elementos[1].Name.Should().Be("Claudia");
             result.Value.Elementos[1].Email.Should().Be("claudia@ejemplo.com");
-            await _repositorio.Received(1).GetFiltered(Arg.Any<PatientFilterDTO>(), Arg.Any<CancellationToken>());
+            await _repository.Received(1).GetFiltered(Arg.Any<PatientFilterDTO>(), Arg.Any<CancellationToken>());
 
         }
 
         [Fact]
-        public async Task Handle_CuandoNoHayPatients_RetornaListaVaciaYTotalCero()
+        public async Task Handle_NoPatientsExist_ReturnsEmptyListAndTotalZero()
         {
             // Arrange
-            var pagina = 1;
-            var registrosPorPagina = 5;
+            var page = 1;
+            var pageSize = 5;
 
-            var patientFilterDTO = new PatientFilterDTO { Pagina = pagina, RegistrosPorPagina = registrosPorPagina };
+            var filterDto = new PatientFilterDTO { Pagina = page, RegistrosPorPagina = pageSize };
 
             IEnumerable<Patient> patients = new List<Patient>();
 
-            _repositorio.GetFiltered(Arg.Any<PatientFilterDTO>(), Arg.Any<CancellationToken>()).Returns(patients);
+            _repository.GetFiltered(Arg.Any<PatientFilterDTO>(), Arg.Any<CancellationToken>()).Returns(patients);
 
             var dbSet = new List<Patient>().BuildMockDbSet();
             _db.Patients.Returns(dbSet);
 
             var request = new GetPatientListQuery
             {
-                Pagina = pagina,
-                RegistrosPorPagina = registrosPorPagina
+                Pagina = page,
+                RegistrosPorPagina = pageSize
             };
 
             // Act
