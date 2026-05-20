@@ -1,5 +1,6 @@
 ﻿using DientesLimpios.Application.Interfaces.Persistence;
 using DientesLimpios.Application.Interfaces.Repositories;
+using DientesLimpios.Persistence.Interceptors;
 using DientesLimpios.Persistence.Repositories;
 using DientesLimpios.Persistence.UnitsOfWork;
 using Microsoft.EntityFrameworkCore;
@@ -16,13 +17,19 @@ namespace DientesLimpios.Persistence
             var connectionString = configuration.GetConnectionString("DientesLimpiosConnectionString")
                 ?? throw new InvalidOperationException("Connection string 'DientesLimpiosConnectionString' is not configured.");
 
-            services.AddDbContext<DientesLimpiosDbContext>(options =>
-                    options.UseSqlServer(connectionString));
+            // NEW: register the interceptor itself.
+            services.AddScoped<AuditableEntitiesInterceptor>();
+
+            // CHANGED: AddDbContext now receives the IServiceProvider so it can resolve the interceptor.
+            services.AddDbContext<DientesLimpiosDbContext>((sp, options) =>
+            {
+                options.UseSqlServer(connectionString);
+                options.AddInterceptors(sp.GetRequiredService<AuditableEntitiesInterceptor>());
+            });
 
             // NEW — forward IApplicationDbContext to the same DbContext instance:
             services.AddScoped<IApplicationDbContext>(sp =>
                 sp.GetRequiredService<DientesLimpiosDbContext>());
-
 
             //Dependency injection for repositories
             services.AddScoped<IPatientRepository, PatientRepository>();
