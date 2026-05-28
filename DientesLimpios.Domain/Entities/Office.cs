@@ -4,16 +4,14 @@ using DientesLimpios.Domain.Errors;
 
 namespace DientesLimpios.Domain.Entities
 {
-    public class Office : AuditableEntity
+    public class Office : AggregateRoot
     {
-        public Guid Id { get; private set; }
         public string Name { get; private set; } = null!;
 
         private Office() { }   // EF Core
 
-        private Office(string name)
+        private Office(string name) : base(Guid.CreateVersion7())
         {
-            Id = Guid.CreateVersion7();
             Name = name;
         }
 

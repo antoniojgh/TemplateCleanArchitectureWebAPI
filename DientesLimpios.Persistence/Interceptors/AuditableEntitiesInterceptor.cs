@@ -18,8 +18,8 @@ namespace DientesLimpios.Persistence.Interceptors
             var now = DateTime.UtcNow;
             var userId = userService.GetUserId();
 
-            foreach (EntityEntry<AuditableEntity> entry in
-                     eventData.Context.ChangeTracker.Entries<AuditableEntity>())
+            foreach (EntityEntry<AggregateRoot> entry in
+                     eventData.Context.ChangeTracker.Entries<AggregateRoot>())
             {
                 switch (entry.State)
                 {

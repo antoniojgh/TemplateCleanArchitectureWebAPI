@@ -3,12 +3,12 @@ using DientesLimpios.Domain.Common.ResultPattern;
 using DientesLimpios.Domain.Enums;
 using DientesLimpios.Domain.Errors;
 using DientesLimpios.Domain.ValueObjects;
+using DientesLimpios.Domain.Events;
 
 namespace DientesLimpios.Domain.Entities
 {
-    public class Appointment : AuditableEntity
+    public class Appointment : AggregateRoot
     {
-        public Guid Id { get; private set; }
         public Guid PatientId { get; private set; }
         public Guid DentistId { get; private set; }
         public Guid OfficeId { get; private set; }
@@ -22,9 +22,8 @@ namespace DientesLimpios.Domain.Entities
 
         private Appointment(
             Guid patientId, Guid dentistId, Guid officeId,
-            TimeInterval timeInterval)
+            TimeInterval timeInterval) : base(Guid.CreateVersion7())
         {
-            Id = Guid.CreateVersion7();
             PatientId = patientId;
             DentistId = dentistId;
             OfficeId = officeId;
@@ -43,8 +42,14 @@ namespace DientesLimpios.Domain.Entities
             if (intervalResult.IsFailure)
                 return Result.Failure<Appointment>(intervalResult.Error);
 
-            return Result.Success(new Appointment(
-                patientId, dentistId, officeId, intervalResult.Value));
+            var appointment = new Appointment(
+                patientId, dentistId, officeId, intervalResult.Value);
+
+            appointment.RaiseDomainEvent(new AppointmentCreatedEvent(
+                appointment.Id, patientId, dentistId, officeId, startDate, endDate));
+
+
+            return Result.Success(appointment);
         }
 
         public Result Cancel()

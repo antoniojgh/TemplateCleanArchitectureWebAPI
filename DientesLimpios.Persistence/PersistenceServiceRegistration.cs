@@ -17,15 +17,20 @@ namespace DientesLimpios.Persistence
             var connectionString = configuration.GetConnectionString("DientesLimpiosConnectionString")
                 ?? throw new InvalidOperationException("Connection string 'DientesLimpiosConnectionString' is not configured.");
 
-            // NEW: register the interceptor itself.
+            // Interceptors
             services.AddScoped<AuditableEntitiesInterceptor>();
+            services.AddScoped<DispatchDomainEventsInterceptor>();
+
 
             // CHANGED: AddDbContext now receives the IServiceProvider so it can resolve the interceptor.
             services.AddDbContext<DientesLimpiosDbContext>((sp, options) =>
             {
                 options.UseSqlServer(connectionString);
-                options.AddInterceptors(sp.GetRequiredService<AuditableEntitiesInterceptor>());
+                options.AddInterceptors(
+                    sp.GetRequiredService<AuditableEntitiesInterceptor>(),
+                    sp.GetRequiredService<DispatchDomainEventsInterceptor>());
             });
+
 
             // NEW — forward IApplicationDbContext to the same DbContext instance:
             services.AddScoped<IApplicationDbContext>(sp =>

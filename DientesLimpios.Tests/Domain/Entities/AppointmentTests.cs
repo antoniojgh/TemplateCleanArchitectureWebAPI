@@ -1,6 +1,7 @@
 ﻿using DientesLimpios.Domain.Entities;
 using DientesLimpios.Domain.Enums;
 using DientesLimpios.Domain.Errors;
+using DientesLimpios.Domain.Events;
 using DientesLimpios.Domain.ValueObjects;
 using FluentAssertions; // Replaces Assert.AreEqual
 
@@ -47,6 +48,31 @@ namespace DientesLimpios.Tests.Domain.Entities
 
             appointment.Status.Should().Be(AppointmentStatus.Scheduled);
             appointment.Id.Should().NotBeEmpty();
+        }
+
+
+
+        [Fact]
+        public void Create_OnSuccess_RaisesAppointmentCreatedEvent()
+        {
+            // Act
+            var appointmentResult = Appointment.Create(_patientId, _dentistId, _officeId, _interval.Start, _interval.End, _nowUtc);
+
+            // Assert
+            appointmentResult.IsSuccess.Should().BeTrue();
+            var appointment = appointmentResult.Value;
+
+            var domainEvent = appointment.DomainEvents
+                .OfType<AppointmentCreatedEvent>()
+                .Should().ContainSingle()
+                .Subject;
+
+            domainEvent.AppointmentId.Should().Be(appointment.Id);
+            domainEvent.PatientId.Should().Be(_patientId);
+            domainEvent.DentistId.Should().Be(_dentistId);
+            domainEvent.OfficeId.Should().Be(_officeId);
+            domainEvent.StartDate.Should().Be(_interval.Start);
+            domainEvent.EndDate.Should().Be(_interval.End);
         }
 
         [Fact]

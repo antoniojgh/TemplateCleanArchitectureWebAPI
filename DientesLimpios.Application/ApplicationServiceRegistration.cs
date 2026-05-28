@@ -11,14 +11,25 @@ namespace DientesLimpios.Application
         {
             services.AddTransient<IMediator, SimpleMediator>();
 
+            // Domain event dispatcher.
+            services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
+
             // Registers all AbstractValidator<T> from the assembly
             services.AddValidatorsFromAssembly(typeof(IMediator).Assembly);
 
             services.Scan(scan =>
-            scan.FromAssembliesOf(typeof(IMediator))
-            .AddClasses(c => c.AssignableTo(typeof(IRequestHandler<,>)))
-            .AsImplementedInterfaces()
-            .WithScopedLifetime());
+                scan.FromAssembliesOf(typeof(IMediator))
+                    .AddClasses(c => c.AssignableTo(typeof(IRequestHandler<,>)))
+                    .AsImplementedInterfaces()
+                    .WithScopedLifetime());
+
+            // Scan for IDomainEventHandler<>.
+            services.Scan(scan =>
+                scan.FromAssembliesOf(typeof(IMediator))
+                    .AddClasses(c => c.AssignableTo(typeof(IDomainEventHandler<>)))
+                    .AsImplementedInterfaces()
+                    .WithScopedLifetime());
+
 
             return services;
 

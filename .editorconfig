@@ -3,7 +3,17 @@ root = true
 [*.cs]
 # These analyzer rules fire frequently with low signal in a typical .NET 10 codebase.
 # Keep them visible as suggestions, but don't fail the build on them.
- 
+
+# CA1030: Use events where appropriate
+# Disabled because we use the DDD Domain Events pattern, which is unrelated
+# to the .NET 'event' keyword. See AuditableEntity.RaiseDomainEvent.
+dotnet_diagnostic.CA1030.severity = none 
+
+# CA1711: Identifiers should not have incorrect suffix
+# Disabled: we use the DDD 'Handler' suffix for domain-event handlers,
+# which is the standard naming and not a .NET EventHandler delegate.
+dotnet_diagnostic.CA1711.severity = none
+
 dotnet_diagnostic.CA1062.severity = suggestion   # Validate arguments of public methods (noisy for DTOs / handlers)
 dotnet_diagnostic.CA1812.severity = suggestion   # Avoid uninstantiated internal classes (fires on EF Core entities, FluentValidation validators discovered by reflection)
 dotnet_diagnostic.CA1515.severity = suggestion   # Types can be made internal (would force a wide review of public API)
