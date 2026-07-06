@@ -16,11 +16,10 @@ namespace DientesLimpios.Application.UseCases.Appointments.Commands.SendAppointm
             logger.LogInformation("Sending appointment reminders for date: {Date}", DateTime.UtcNow.Date.AddDays(1));
 
             var tomorrow = DateTime.UtcNow.Date.AddDays(1);
-            var startDate = tomorrow;
 
             var filter = new AppointmentFilterDTO
             {
-                StartDate = startDate,
+                StartDate = tomorrow,
                 AppointmentStatus = AppointmentStatus.Scheduled
             };
 

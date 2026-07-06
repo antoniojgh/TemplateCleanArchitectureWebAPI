@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+	  <TargetFramework>net10.0</TargetFramework>
+	  <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="coverlet.collector" />
+		<PackageReference Include="FluentAssertions" />
+		<PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+		<PackageReference Include="Microsoft.NET.Test.Sdk" />
+		<PackageReference Include="Testcontainers.MsSql" />
+		<PackageReference Include="xunit" />
+		<PackageReference Include="xunit.runner.visualstudio" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\DientesLimpios.API\DientesLimpios.API.csproj" />
+		<ProjectReference Include="..\DientesLimpios.Application\DientesLimpios.Application.csproj" />
+		<ProjectReference Include="..\DientesLimpios.Domain\DientesLimpios.Domain.csproj" />
+		<ProjectReference Include="..\DientesLimpios.Persistence\DientesLimpios.Persistence.csproj" />
+	</ItemGroup>	
+
+	<ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

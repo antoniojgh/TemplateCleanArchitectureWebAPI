@@ -5,8 +5,8 @@ namespace DientesLimpios.API.Jobs
 {
     public class AppointmentReminderJob(IServiceScopeFactory scopeFactory, ILogger<AppointmentReminderJob> logger) : BackgroundService
     {
-        // Dominican Republic timezone (Eastern Standard Time)
-        private readonly TimeZoneInfo _dominicanRepublicTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
+        // Spain timezone (Central European Time / CEST)
+        private readonly TimeZoneInfo _spainTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Madrid");
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
@@ -15,9 +15,9 @@ namespace DientesLimpios.API.Jobs
             // While cancellation has not been requested
             while (!stoppingToken.IsCancellationRequested)
             {
-                var now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _dominicanRepublicTimeZone);
+                var now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _spainTimeZone);
 
-                // If it is 8 AM in the Dominican Republic
+                // If it is 8 AM in Spain
                 if (now.Hour == 8)
                 {
                     logger.LogInformation("Triggering daily appointment reminders at {Time}", now);

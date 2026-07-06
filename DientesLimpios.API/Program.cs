@@ -92,7 +92,7 @@ try
 
     app.Run();
 }
-catch (Exception ex)
+catch (Exception ex) 
 {
     Log.Fatal(ex, "Web API terminated unexpectedly!");
 }
@@ -100,3 +100,8 @@ finally
 {
     Log.CloseAndFlush();
 }
+
+// Exposes the implicit top-level Program class so the integration
+// test project can use WebApplicationFactory<Program>.
+public partial class Program { }
+
