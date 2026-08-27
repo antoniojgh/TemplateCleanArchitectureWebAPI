@@ -6,6 +6,8 @@
   <ItemGroup>
     <!-- Transitive pinning to fix CVE-2026-49451 (GHSA-v5pm-xwqc-g5wc) -->
     <PackageVersion Include="Microsoft.OpenApi" Version="2.7.5" />
+    <!-- Transitive pinning to fix GHSA-q939-rpr3-3284 -->
+    <PackageVersion Include="SSH.NET" Version="2026.0.0" />
     <!-- API project -->
     <PackageVersion Include="Asp.Versioning.Mvc" Version="8.1.1" />
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9" />
