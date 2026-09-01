@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using FluentValidation;
+﻿using FluentValidation;
 
 namespace DientesLimpios.Application.UseCases.Offices.Commands.CreateOffice
 {
@@ -10,8 +7,8 @@ namespace DientesLimpios.Application.UseCases.Offices.Commands.CreateOffice
         public CreateOfficeCommandValidator()
         {
             RuleFor(x => x.Name)
-                .NotEmpty().WithMessage("El campo {PropertyName} es requerido")
-                .MaximumLength(150).WithMessage("La lontigud del campo {PropertyName} debe ser menor o igual a {MaxLength}");
+                .NotEmpty().WithMessage("{PropertyName} Field is required")
+                .MaximumLength(150).WithMessage("The length of the {PropertyName} field must be less than or equal to {MaxLength}");
         }
     }
 }

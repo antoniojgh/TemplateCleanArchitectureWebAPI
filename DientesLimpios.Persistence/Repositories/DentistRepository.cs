@@ -22,7 +22,7 @@ namespace DientesLimpios.Persistence.Repositories
                 queryable = queryable.Where(x => x.Email.Value.Contains(filter.Email));
             }
 
-            return await queryable.OrderBy(x => x.Name).Paginar(filter.Pagina, filter.RegistrosPorPagina).ToListAsync(cancellationToken);
+            return await queryable.OrderBy(x => x.Name).Paginar(filter.Page, filter.RecordsPerPage).ToListAsync(cancellationToken);
         }
     }
 }

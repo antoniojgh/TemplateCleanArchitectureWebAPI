@@ -45,8 +45,8 @@ namespace DientesLimpios.Tests.Application.UseCases.Patients
 
             var request = new GetPatientListQuery
             {
-                Pagina = page,
-                RegistrosPorPagina = pageSize
+                Page = page,
+                RecordsPerPage = pageSize
             };
 
             // Act
@@ -71,7 +71,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Patients
             var page = 1;
             var pageSize = 5;
 
-            var filterDto = new PatientFilterDTO { Pagina = page, RegistrosPorPagina = pageSize };
+            var filterDto = new PatientFilterDTO { Page = page, RecordsPerPage = pageSize };
 
             IEnumerable<Patient> patients = new List<Patient>();
 
@@ -82,8 +82,8 @@ namespace DientesLimpios.Tests.Application.UseCases.Patients
 
             var request = new GetPatientListQuery
             {
-                Pagina = page,
-                RegistrosPorPagina = pageSize
+                Page = page,
+                RecordsPerPage = pageSize
             };
 
             // Act

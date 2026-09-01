@@ -24,7 +24,7 @@ namespace DientesLimpios.Persistence.Repositories
 
 
             return await queryable.OrderBy(x => x.Name)
-                .Paginar(filter.Pagina, filter.RegistrosPorPagina).ToListAsync(cancellationToken);
+                .Paginar(filter.Page, filter.RecordsPerPage).ToListAsync(cancellationToken);
         }
     }
 }

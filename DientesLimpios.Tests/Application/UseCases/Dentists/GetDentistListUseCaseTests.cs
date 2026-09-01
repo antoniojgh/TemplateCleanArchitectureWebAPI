@@ -46,8 +46,8 @@ namespace DientesLimpios.Tests.Application.UseCases.Dentists
 
             var request = new GetDentistListQuery
             {
-                Pagina = page,
-                RegistrosPorPagina = pageSize
+                Page = page,
+                RecordsPerPage = pageSize
             };
 
             // Act
@@ -71,7 +71,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Dentists
             var page = 1;
             var pageSize = 5;
 
-            var filterDto = new DentistFilterDTO { Pagina = page, RegistrosPorPagina = pageSize };
+            var filterDto = new DentistFilterDTO { Page = page, RecordsPerPage = pageSize };
 
             IEnumerable<Dentist> dentists = new List<Dentist>();
 
@@ -82,8 +82,8 @@ namespace DientesLimpios.Tests.Application.UseCases.Dentists
 
             var request = new GetDentistListQuery
             {
-                Pagina = page,
-                RegistrosPorPagina = pageSize
+                Page = page,
+                RecordsPerPage = pageSize
             };
 
             // Act

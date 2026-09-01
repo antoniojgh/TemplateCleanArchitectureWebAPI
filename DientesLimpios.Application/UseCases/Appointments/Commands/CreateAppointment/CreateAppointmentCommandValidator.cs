@@ -7,8 +7,8 @@ namespace DientesLimpios.Application.UseCases.Appointments.Commands.CreateAppoin
         public CreateAppointmentCommandValidator()
         {
             RuleFor(x => x.StartDate)
-                .LessThan(x => x.EndDate).WithMessage("La fecha de start debe ser anterior a la fecha de end")
-                .GreaterThan(DateTime.UtcNow).WithMessage("La fecha start no puede estar en el pasado");
+                .LessThan(x => x.EndDate).WithMessage("The start date must be earlier than the end date")
+                .GreaterThan(DateTime.UtcNow).WithMessage("The start date cannot be in the past");
 
         }
     }
