@@ -7,7 +7,7 @@ namespace DientesLimpios.Application.Interfaces.Repositories
     {
         Task<bool> AppointmentOverlaps(Guid dentistId, DateTime start, DateTime end, CancellationToken cancellationToken = default);
 
-        // Obtiene una appointment por su Id, incluyendo las entidades relacionadas y reemplaza el método base
+        // Gets an appointment by its ID, including related entities, and replaces the base method
         Task<Appointment?> GetById(Guid id, CancellationToken cancellationToken = default);
         Task<IEnumerable<Appointment>> GetFiltered(AppointmentFilterDTO appointmentFilterDTO, CancellationToken cancellationToken = default);
     }
