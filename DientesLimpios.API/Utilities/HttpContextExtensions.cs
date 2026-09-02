@@ -4,7 +4,7 @@
     {
         public static void InsertPaginationInHeader(this HttpContext httpContext, int totalRecordCount)
         {
-            httpContext.Response.Headers.Append("cantidad-total-registros", totalRecordCount.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            httpContext.Response.Headers.Append("total-number-of-records", totalRecordCount.ToString(System.Globalization.CultureInfo.InvariantCulture));
         }
     }
 }
