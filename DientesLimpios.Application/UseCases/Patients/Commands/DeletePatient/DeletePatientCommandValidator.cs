@@ -7,8 +7,8 @@ namespace DientesLimpios.Application.UseCases.Patients.Commands.DeletePatient
         public DeletePatientCommandValidator()
         {
             RuleFor(x => x.Id)
-                .NotNull().WithMessage("El campo {Id} es requerido")
-                .NotEmpty().WithMessage("El campo {Id} debe tener un valor válido");
+                .NotNull().WithMessage("The {PropertyName} field is required")
+                .NotEmpty().WithMessage("The {PropertyName} field must have a valid value");
         }
     }
 }

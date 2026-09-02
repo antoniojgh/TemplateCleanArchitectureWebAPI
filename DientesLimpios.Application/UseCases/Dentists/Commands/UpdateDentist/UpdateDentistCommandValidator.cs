@@ -13,7 +13,7 @@ namespace DientesLimpios.Application.UseCases.Dentists.Commands.UpdateDentist
             RuleFor(p => p.Email)
                 .NotEmpty().WithMessage("The {PropertyName} field is required")
                 .MaximumLength(254).WithMessage("The length of the {PropertyName} field must be less than or equal to {MaxLength}")
-                .EmailAddress().WithMessage("The {PropertyName} field is not a valid email address");
+                .EmailAddress().WithMessage("The {PropertyName} field must be a valid email address");
 
         }
     }
