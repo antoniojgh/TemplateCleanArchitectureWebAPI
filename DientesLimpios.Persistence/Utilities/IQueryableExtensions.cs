@@ -2,11 +2,11 @@
 {
     public static class IQueryableExtensions
     {
-        public static IQueryable<T> Paginar<T>(this IQueryable<T> queryable, int pagina, int registrosPorPagina)
+        public static IQueryable<T> Paginar<T>(this IQueryable<T> queryable, int page, int recordsPerPage)
         {
             return queryable
-                .Skip((pagina - 1) * registrosPorPagina)
-                .Take(registrosPorPagina);
+                .Skip((page - 1) * recordsPerPage)
+                .Take(recordsPerPage);
         }
     }
 }
