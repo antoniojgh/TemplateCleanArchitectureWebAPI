@@ -173,15 +173,13 @@ flag them; if asked to fix one, write the failing test first.
 
 **Correctness**
 
-1. `SendAppointmentRemindersHandler` filters only on `StartDate >= tomorrow`
-   with no upper bound — it reminds about *every* future appointment daily.
-2. `GetDentistListHandler` / `GetPatientListHandler` compute `Total` with an
+1. `GetDentistListHandler` / `GetPatientListHandler` compute `Total` with an
    unfiltered `CountAsync()`, so paginated totals are wrong.
-3. `CreateAppointmentHandler` checks overlap then inserts with no transaction
+2. `CreateAppointmentHandler` checks overlap then inserts with no transaction
    or lock — concurrent double-booking is possible.
-4. All three `Appointments` foreign keys cascade-delete: removing a dentist
+3. All three `Appointments` foreign keys cascade-delete: removing a dentist
    destroys their appointment history.
-5. An unknown `PatientId`/`DentistId`/`OfficeId` produces a `DbUpdateException`
+4. An unknown `PatientId`/`DentistId`/`OfficeId` produces a `DbUpdateException`
    → 500 with the raw SQL error text in `Detail`.
 
 **Structural**
