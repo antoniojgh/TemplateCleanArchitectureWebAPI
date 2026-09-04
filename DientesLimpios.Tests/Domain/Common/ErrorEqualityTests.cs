@@ -1,6 +1,5 @@
 ﻿using DientesLimpios.Domain.Common.ResultPattern;
 using FluentAssertions;
-using Xunit;
 
 namespace DientesLimpios.Tests.Domain.Common
 {
