@@ -13,13 +13,14 @@ namespace DientesLimpios.Application.UseCases.Appointments.Commands.SendAppointm
     {
         public async Task<Result> Handle(SendAppointmentRemindersCommand request, CancellationToken cancellationToken)
         {
-            logger.LogInformation("Sending appointment reminders for date: {Date}", DateTime.UtcNow.Date.AddDays(1));
-
             var tomorrow = DateTime.UtcNow.Date.AddDays(1);
+
+            logger.LogInformation("Sending appointment reminders for date: {Date}", tomorrow);
 
             var filter = new AppointmentFilterDTO
             {
                 StartDate = tomorrow,
+                EndDate = tomorrow.AddDays(1),
                 AppointmentStatus = AppointmentStatus.Scheduled
             };
 
