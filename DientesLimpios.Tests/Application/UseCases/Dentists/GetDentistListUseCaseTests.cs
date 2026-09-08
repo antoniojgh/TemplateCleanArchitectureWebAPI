@@ -22,7 +22,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Dentists
             _repository = Substitute.For<IDentistRepository>();
             _logger = Substitute.For<ILogger<GetDentistListHandler>>();
 
-            _handler = new GetDentistListHandler(_repository, _db, _logger);
+            _handler = new GetDentistListHandler(_repository, _logger);
 
         }
 
@@ -30,6 +30,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Dentists
         public async Task Handle_DentistsExist_ReturnsPagedDTOsCorrectly()
         {
             // Arrange
+            const int total = 7;   // deliberately != dentists.Count
             var page = 1;
             var pageSize = 2;
 
@@ -38,11 +39,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Dentists
 
             var dentists = new List<Dentist> { dentist1, dentist2 };
 
-            _repository.GetFiltered(Arg.Any<DentistFilterDTO>(), Arg.Any<CancellationToken>()).Returns(dentists);
-
-            var allDentists = Enumerable.Range(0, 10).Select(i => Dentist.Create($"Name{i}", $"email{i}@test.com").Value).ToList();
-            var dbSet = allDentists.BuildMockDbSet();
-            _db.Dentists.Returns(dbSet);
+            _repository.GetFiltered(Arg.Any<DentistFilterDTO>(), Arg.Any<CancellationToken>()).Returns((dentists, total));
 
             var request = new GetDentistListQuery
             {
@@ -55,12 +52,12 @@ namespace DientesLimpios.Tests.Application.UseCases.Dentists
 
             // Assert
             result.IsSuccess.Should().BeTrue();
-            result.Value.Total.Should().Be(10);
-            result.Value.Elementos.Count.Should().Be(2);
-            result.Value.Elementos[0].Name.Should().Be("Felipe");
-            result.Value.Elementos[0].Email.Should().Be("felipe@ejemplo.com");
-            result.Value.Elementos[1].Name.Should().Be("Claudia");
-            result.Value.Elementos[1].Email.Should().Be("claudia@ejemplo.com");
+            result.Value.Total.Should().Be(total);
+            result.Value.Elements.Count.Should().Be(2);
+            result.Value.Elements[0].Name.Should().Be("Felipe");
+            result.Value.Elements[0].Email.Should().Be("felipe@ejemplo.com");
+            result.Value.Elements[1].Name.Should().Be("Claudia");
+            result.Value.Elements[1].Email.Should().Be("claudia@ejemplo.com");
             await _repository.Received(1).GetFiltered(Arg.Any<DentistFilterDTO>(), Arg.Any<CancellationToken>());
         }
 
@@ -75,7 +72,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Dentists
 
             IEnumerable<Dentist> dentists = new List<Dentist>();
 
-            _repository.GetFiltered(Arg.Any<DentistFilterDTO>(), Arg.Any<CancellationToken>()).Returns(dentists);
+            _repository.GetFiltered(Arg.Any<DentistFilterDTO>(), Arg.Any<CancellationToken>()).Returns((dentists, dentists.Count()));
 
             var dbSet = new List<Dentist>().BuildMockDbSet();
             _db.Dentists.Returns(dbSet);
@@ -92,7 +89,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Dentists
             // Assert
             result.IsSuccess.Should().BeTrue();
             result.Value.Total.Should().Be(0);
-            result.Value.Elementos.Count.Should().Be(0);
+            result.Value.Elements.Count.Should().Be(0);
         }
     }
 }

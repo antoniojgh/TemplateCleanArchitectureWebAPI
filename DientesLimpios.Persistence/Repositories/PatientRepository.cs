@@ -8,9 +8,9 @@ namespace DientesLimpios.Persistence.Repositories
 {
     public sealed class PatientRepository(DientesLimpiosDbContext context) : IPatientRepository
     {
-        public async Task<IEnumerable<Patient>> GetFiltered(PatientFilterDTO filter, CancellationToken cancellationToken = default)
+        public async Task<(IEnumerable<Patient> patients, int totalCount)> GetFiltered(PatientFilterDTO filter, CancellationToken cancellationToken = default)
         {
-            var queryable = context.Patients.AsQueryable();
+            var queryable = context.Patients.AsNoTracking();
 
             if (!string.IsNullOrWhiteSpace(filter.Name))
             {
@@ -22,9 +22,14 @@ namespace DientesLimpios.Persistence.Repositories
                 queryable = queryable.Where(x => x.Email.Value.Contains(filter.Email));
             }
 
+            // 1. Get the total count of the filtered data BEFORE pagination
+            var totalCount = await queryable.CountAsync(cancellationToken);
 
-            return await queryable.OrderBy(x => x.Name)
+            // 2. Apply pagination and fetch the specific page of data
+            var patients = await queryable.OrderBy(x => x.Name)
                 .Paginar(filter.Page, filter.RecordsPerPage).ToListAsync(cancellationToken);
+
+            return (patients, totalCount);
         }
     }
 }

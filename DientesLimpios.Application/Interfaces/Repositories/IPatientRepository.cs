@@ -5,6 +5,6 @@ namespace DientesLimpios.Application.Interfaces.Repositories
 {
     public interface IPatientRepository
     {
-        Task<IEnumerable<Patient>> GetFiltered(PatientFilterDTO filter, CancellationToken cancellationToken = default);
+        Task<(IEnumerable<Patient> patients, int totalCount)> GetFiltered(PatientFilterDTO filter, CancellationToken cancellationToken = default);
     }
 }
