@@ -1,3 +1,8 @@
+# Follow this
+
+This project is reviewed and implemented by me. When asked about improvements, explain the reasoning and show the proposed code; 
+do not implement unless I explicitly say "implement it".
+
 # DientesLimpios — .NET 10 Clean Architecture Web API
 
 Dental clinic backend (Patients, Dentists, Offices, Appointments). Portfolio

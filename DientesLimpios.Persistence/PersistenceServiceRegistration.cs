@@ -2,7 +2,6 @@
 using DientesLimpios.Application.Interfaces.Repositories;
 using DientesLimpios.Persistence.Interceptors;
 using DientesLimpios.Persistence.Repositories;
-using DientesLimpios.Persistence.UnitsOfWork;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
@@ -40,8 +39,6 @@ namespace DientesLimpios.Persistence
             services.AddScoped<IPatientRepository, PatientRepository>();
             services.AddScoped<IDentistRepository, DentistRepository>();
             services.AddScoped<IAppointmentRepository, AppointmentRepository>();
-
-            services.AddScoped<IUnitOfWork, EFCoreUnitOfWork>();
 
             return services;
         }

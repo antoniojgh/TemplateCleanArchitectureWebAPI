@@ -1,4 +1,5 @@
-﻿using DientesLimpios.Persistence;
+﻿using DientesLimpios.Application.Interfaces.Notifications;
+using DientesLimpios.Persistence;
 using DientesLimpios.Persistence.Interceptors;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -46,6 +47,13 @@ namespace DientesLimpios.IntegrationTests
 
                 // 3) Don't run the background reminder job during tests.
                 services.RemoveAll<IHostedService>();
+
+                // 4) Never open a real SMTP connection from the test suite, and make the
+                //    confirmation notification observable.
+                services.RemoveAll<INotificationService>();
+                services.AddSingleton<RecordingNotificationService>();
+                services.AddScoped<INotificationService>(sp =>
+                    sp.GetRequiredService<RecordingNotificationService>());
             });
         }
 
