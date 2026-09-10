@@ -18,6 +18,13 @@ namespace DientesLimpios.Application.UseCases.Patients.Commands.DeletePatient
             if (patient is null)
                 return Result.Failure(DomainErrors.Patient.NotFound);
 
+            // Appointments are history. Refuse explicitly rather than let the foreign key throw,
+            // so the caller gets a 409 with a domain error instead of a 500.
+            var hasAppointments = await db.Appointments.AnyAsync(a => a.PatientId == request.Id, cancellationToken);
+
+            if (hasAppointments)
+                return Result.Failure(DomainErrors.Patient.HasAppointmentsConflict);
+
             db.Patients.Remove(patient);
             await db.SaveChangesAsync(cancellationToken);
 

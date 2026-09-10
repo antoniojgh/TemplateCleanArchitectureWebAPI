@@ -132,6 +132,40 @@ namespace DientesLimpios.IntegrationTests
             stored.Should().Be(1);
         }
 
+        [Fact]
+        public async Task Delete_DentistWithAppointments_Returns409_AndAppointmentSurvives()
+        {
+            // Arrange — a dentist with one appointment.
+            var (patientId, dentistId, officeId) = await SeedCoreEntitiesAsync();
+
+            var start = DateTime.UtcNow.AddDays(1);
+
+            var post = await _client.PostAsJsonAsync("/api/v1/appointments", new CreateAppointmentDTO
+            {
+                PatientId = patientId,
+                DentistId = dentistId,
+                OfficeId = officeId,
+                StartDate = start,
+                EndDate = start.AddHours(1)
+            });
+
+            post.StatusCode.Should().Be(HttpStatusCode.Created);
+            var appointmentId = await post.Content.ReadFromJsonAsync<Guid>();
+
+            // Act
+            var delete = await _client.DeleteAsync(new Uri($"/api/v1/dentists/{dentistId}", UriKind.Relative));
+
+            // Assert — the delete is refused and the history is intact.
+            delete.StatusCode.Should().Be(HttpStatusCode.Conflict);
+
+            var problem = await delete.Content.ReadFromJsonAsync<ProblemDetails>();
+            problem!.Extensions.Should().ContainKey("errorCode");
+
+            using var scope = factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<DientesLimpiosDbContext>();
+            (await db.Appointments.AnyAsync(x => x.Id == appointmentId)).Should().BeTrue();
+        }
+
         private async Task<(Guid patientId, Guid dentistId, Guid officeId)> SeedCoreEntitiesAsync()
         {
             using var scope = factory.Services.CreateScope();

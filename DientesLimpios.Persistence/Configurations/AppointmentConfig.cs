@@ -13,6 +13,24 @@ namespace DientesLimpios.Persistence.Configurations
                 action.Property(e => e.Start).HasColumnName("StartDate");
                 action.Property(e => e.End).HasColumnName("EndDate");
             });
+
+            // Appointments are medical and financial history: deleting a dentist, patient or
+            // office must never destroy them. Restrict makes the database refuse — the backstop
+            // behind the explicit rule in the delete handlers, which is what produces the 409.
+            builder.HasOne(a => a.Patient)
+                   .WithMany()
+                   .HasForeignKey(a => a.PatientId)
+                   .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(a => a.Dentist)
+                   .WithMany()
+                   .HasForeignKey(a => a.DentistId)
+                   .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(a => a.Office)
+                   .WithMany()
+                   .HasForeignKey(a => a.OfficeId)
+                   .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

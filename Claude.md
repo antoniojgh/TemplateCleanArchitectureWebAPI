@@ -46,9 +46,9 @@ projects individually rather than reporting a broken build.
 Migrations (two separate DbContexts, two separate migration folders):
 
 ```bash
-dotnet ef migrations add <Name> --project DientesLimpios.Persistence --startup-project DientesLimpios.API
+dotnet ef migrations add <Name> --project DientesLimpios.Persistence --startup-project DientesLimpios.API --context DientesLimpiosDbContext
 dotnet ef migrations add <Name> --project DientesLimpios.Identity   --startup-project DientesLimpios.API --context DientesLimpiosIdentityDbContext
-dotnet ef database update --project DientesLimpios.Persistence --startup-project DientesLimpios.API
+dotnet ef database update --project DientesLimpios.Persistence --startup-project DientesLimpios.API --context DientesLimpiosDbContext
 ```
 
 Connection string key: `ConnectionStrings:DientesLimpiosConnectionString`

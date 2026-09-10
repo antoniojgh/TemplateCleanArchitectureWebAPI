@@ -18,6 +18,13 @@ namespace DientesLimpios.Application.UseCases.Offices.Commands.DeleteOffice
             if (office is null)
                 return Result.Failure(DomainErrors.Office.NotFound);
 
+            // Appointments are history. Refuse explicitly rather than let the foreign key throw,
+            // so the caller gets a 409 with a domain error instead of a 500.
+            var hasAppointments = await db.Appointments.AnyAsync(a => a.OfficeId == request.Id, cancellationToken);
+
+            if (hasAppointments)
+                return Result.Failure(DomainErrors.Office.HasAppointmentsConflict);
+
             db.Offices.Remove(office);
             await db.SaveChangesAsync(cancellationToken);
 

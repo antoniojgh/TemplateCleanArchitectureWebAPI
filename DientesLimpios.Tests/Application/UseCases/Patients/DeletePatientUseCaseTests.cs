@@ -1,5 +1,5 @@
 ﻿using DientesLimpios.Application.Interfaces.Persistence;
-using DientesLimpios.Application.UseCases.Offices.Commands.DeleteOffice;
+using DientesLimpios.Application.UseCases.Patients.Commands.DeletePatient;
 using DientesLimpios.Domain.Entities;
 using DientesLimpios.Domain.Errors;
 using FluentAssertions;
@@ -8,67 +8,65 @@ using Microsoft.Extensions.Logging;
 using MockQueryable.NSubstitute;
 using NSubstitute;
 
-namespace DientesLimpios.Tests.Application.UseCases.Offices
+namespace DientesLimpios.Tests.Application.UseCases.Patients
 {
-    public class DeleteOfficeUseCaseTests
+    public class DeletePatientUseCaseTests
     {
         private readonly IApplicationDbContext _db;
-        private readonly DeleteOfficeHandler _handler;
-        private readonly DeleteOfficeCommandValidator _validator;
-        private readonly ILogger<DeleteOfficeHandler> _logger;
+        private readonly DeletePatientHandler _handler;
+        private readonly DeletePatientCommandValidator _validator;
+        private readonly ILogger<DeletePatientHandler> _logger;
 
-        public DeleteOfficeUseCaseTests()
+        public DeletePatientUseCaseTests()
         {
             _db = Substitute.For<IApplicationDbContext>();
-            _logger = Substitute.For<ILogger<DeleteOfficeHandler>>();
-            _validator = new DeleteOfficeCommandValidator();
+            _logger = Substitute.For<ILogger<DeletePatientHandler>>();
+            _validator = new DeletePatientCommandValidator();
 
             // Default: no appointments reference anything. Tests that need the conflict
-            // path override this. Without it, db.Appointments is an unconfigured substitute
-            // and AnyAsync throws NotSupportedException.
+            // path override this. Build the mock DbSet into a local FIRST —
+            // BuildMockDbSet() calls .Returns() internally, which would clobber
+            // NSubstitute's pending call if it ran inside _db.Appointments.Returns(...).
             var noAppointments = new List<Appointment>().BuildMockDbSet();
             _db.Appointments.Returns(noAppointments);
 
-            _handler = new DeleteOfficeHandler(_db, _logger);
+            _handler = new DeletePatientHandler(_db, _logger);
         }
 
         // First we write the Handler-specific tests:
 
         [Fact]
-        public async Task Handle_OfficeExists_RemovesOfficeAndPersists()
+        public async Task Handle_PatientExists_RemovesPatientAndPersists()
         {
             // Arrange
-            var officeResult = Office.Create("Office A");
-            var office = officeResult.Value;
+            var patient = Patient.Create("Patient A", "patient@test.com").Value;
+            var command = new DeletePatientCommand { Id = patient.Id };
 
-            var id = office.Id;
-            var command = new DeleteOfficeCommand { Id = id };
-
-            var dbSet = new List<Office> { office }.BuildMockDbSet();
-            _db.Offices.Returns(dbSet);
+            var dbSet = new List<Patient> { patient }.BuildMockDbSet();
+            _db.Patients.Returns(dbSet);
 
             // Act
             var result = await _handler.Handle(command, CancellationToken.None);
 
             // Assert
             result.IsSuccess.Should().BeTrue();
-            dbSet.Received(1).Remove(office);
+            dbSet.Received(1).Remove(patient);
             await _db.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
         }
 
         [Fact]
-        public async Task Handle_OfficeHasAppointments_ReturnsFailureConflict()
+        public async Task Handle_PatientHasAppointments_ReturnsFailureConflict()
         {
             // Arrange
-            var office = Office.Create("Office A").Value;
-            var command = new DeleteOfficeCommand { Id = office.Id };
+            var patient = Patient.Create("Patient A", "patient@test.com").Value;
+            var command = new DeletePatientCommand { Id = patient.Id };
 
-            var officeDbSet = new List<Office> { office }.BuildMockDbSet();
-            _db.Offices.Returns(officeDbSet);
+            var patientDbSet = new List<Patient> { patient }.BuildMockDbSet();
+            _db.Patients.Returns(patientDbSet);
 
             var start = DateTime.UtcNow.AddDays(1);
             var appointment = Appointment.Create(
-                Guid.NewGuid(), Guid.NewGuid(), office.Id,
+                patient.Id, Guid.NewGuid(), Guid.NewGuid(),
                 start, start.AddHours(1), DateTime.UtcNow).Value;
 
             var appointmentDbSet = new List<Appointment> { appointment }.BuildMockDbSet();
@@ -79,27 +77,27 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
 
             // Assert
             result.IsFailure.Should().BeTrue();
-            result.Error.Should().Be(DomainErrors.Office.HasAppointmentsConflict);
-            officeDbSet.DidNotReceive().Remove(Arg.Any<Office>());
+            result.Error.Should().Be(DomainErrors.Patient.HasAppointmentsConflict);
+            patientDbSet.DidNotReceive().Remove(Arg.Any<Patient>());
             await _db.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
         }
 
         [Fact]
-        public async Task Handle_OfficeNotFound_ReturnsFailureNotFound()
+        public async Task Handle_PatientNotFound_ReturnsFailureNotFound()
         {
             // Arrange
-            var command = new DeleteOfficeCommand { Id = Guid.NewGuid() };
+            var command = new DeletePatientCommand { Id = Guid.NewGuid() };
 
-            var dbSet = new List<Office>().BuildMockDbSet();
-            _db.Offices.Returns(dbSet);
+            var dbSet = new List<Patient>().BuildMockDbSet();
+            _db.Patients.Returns(dbSet);
 
             // Act
             var result = await _handler.Handle(command, CancellationToken.None);
 
             // Assert
             result.IsFailure.Should().BeTrue();
-            result.Error.Should().Be(DomainErrors.Office.NotFound);
-            _db.Offices.DidNotReceive().Remove(Arg.Any<Office>());
+            result.Error.Should().Be(DomainErrors.Patient.NotFound);
+            dbSet.DidNotReceive().Remove(Arg.Any<Patient>());
             await _db.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
         }
 
@@ -111,7 +109,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
         public void Validate_EmptyId_GeneratesValidationError()
         {
             // Arrange
-            var command = new DeleteOfficeCommand { Id = Guid.Empty};
+            var command = new DeletePatientCommand { Id = Guid.Empty };
 
             // Act
             var result = _validator.TestValidate(command);
@@ -124,7 +122,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Offices
         public void Validate_ValidId_GeneratesNoValidationError()
         {
             // Arrange
-            var command = new DeleteOfficeCommand { Id = Guid.NewGuid()};
+            var command = new DeletePatientCommand { Id = Guid.NewGuid() };
 
             // Act
             var result = _validator.TestValidate(command);

@@ -43,6 +43,10 @@ namespace DientesLimpios.Domain.Errors
             public static readonly Error NameRequired = new(
                 "Patient.NameRequired",
                 "The patient name is required.");
+
+            public static readonly Error HasAppointmentsConflict = new(
+                "Patient.HasAppointmentsConflict",
+                "The patient cannot be deleted because appointments reference them.");
         }
 
         public static class Dentist
@@ -54,6 +58,10 @@ namespace DientesLimpios.Domain.Errors
             public static readonly Error NameRequired = new(
                 "Dentist.NameRequired",
                 "The dentist name is required.");
+
+            public static readonly Error HasAppointmentsConflict = new(
+                "Dentist.HasAppointmentsConflict",
+                "The dentist cannot be deleted because appointments reference them.");
         }
 
         public static class Office
@@ -65,6 +73,10 @@ namespace DientesLimpios.Domain.Errors
             public static readonly Error NameRequired = new(
                 "Office.NameRequired",
                 "The office name is required.");
+
+            public static readonly Error HasAppointmentsConflict = new(
+                "Office.HasAppointmentsConflict",
+                "The office cannot be deleted because appointments reference it.");
         }
 
         public static class TimeInterval
