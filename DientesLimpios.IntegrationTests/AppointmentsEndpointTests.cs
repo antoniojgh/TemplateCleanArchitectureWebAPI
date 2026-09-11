@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System.Linq.Expressions;
+using System.Net;
 using System.Net.Http.Json;
 using DientesLimpios.API.DTOs.Appointments;
 using DientesLimpios.Domain.Entities;
@@ -7,6 +8,7 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using System.Text.Json;
 using DientesLimpios.Application.UseCases.Appointments.Queries.GetAppointmentDetail;
 
 
@@ -164,6 +166,119 @@ namespace DientesLimpios.IntegrationTests
             using var scope = factory.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<DientesLimpiosDbContext>();
             (await db.Appointments.AnyAsync(x => x.Id == appointmentId)).Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task Post_UnknownPatient_Returns404_WithPatientNotFoundCode()
+        {
+            // Arrange — a real dentist and office, but a patient id that was never stored.
+            var (_, dentistId, officeId) = await SeedCoreEntitiesAsync();
+
+            var start = DateTime.UtcNow.AddDays(1);
+
+            var appointment = new CreateAppointmentDTO
+            {
+                PatientId = Guid.CreateVersion7(),
+                DentistId = dentistId,
+                OfficeId = officeId,
+                StartDate = start,
+                EndDate = start.AddHours(1)
+            };
+
+            // Act
+            var response = await _client.PostAsJsonAsync("/api/v1/appointments", appointment);
+
+            // Assert — a client error, not the 500 the raw foreign-key violation used to produce.
+            response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+            var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+            problem.Should().NotBeNull();
+            problem!.Status.Should().Be(404);
+            ErrorCode(problem).Should().Be("Patient.NotFound");
+            problem.Detail.Should().NotContain("FOREIGN KEY");
+
+            (await CountAppointmentsAsync(x => x.DentistId == dentistId)).Should().Be(0);
+        }
+
+        [Fact]
+        public async Task Post_UnknownDentist_Returns404_WithDentistNotFoundCode()
+        {
+            // Arrange — a real patient and office, but a dentist id that was never stored.
+            var (patientId, _, officeId) = await SeedCoreEntitiesAsync();
+
+            var start = DateTime.UtcNow.AddDays(1);
+
+            var appointment = new CreateAppointmentDTO
+            {
+                PatientId = patientId,
+                DentistId = Guid.CreateVersion7(),
+                OfficeId = officeId,
+                StartDate = start,
+                EndDate = start.AddHours(1)
+            };
+
+            // Act
+            var response = await _client.PostAsJsonAsync("/api/v1/appointments", appointment);
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+            var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+            problem.Should().NotBeNull();
+            problem!.Status.Should().Be(404);
+            ErrorCode(problem).Should().Be("Dentist.NotFound");
+            problem.Detail.Should().NotContain("FOREIGN KEY");
+
+            (await CountAppointmentsAsync(x => x.PatientId == patientId)).Should().Be(0);
+        }
+
+        [Fact]
+        public async Task Post_UnknownOffice_Returns404_WithOfficeNotFoundCode()
+        {
+            // Arrange — a real patient and dentist, but an office id that was never stored.
+            var (patientId, dentistId, _) = await SeedCoreEntitiesAsync();
+
+            var start = DateTime.UtcNow.AddDays(1);
+
+            var appointment = new CreateAppointmentDTO
+            {
+                PatientId = patientId,
+                DentistId = dentistId,
+                OfficeId = Guid.CreateVersion7(),
+                StartDate = start,
+                EndDate = start.AddHours(1)
+            };
+
+            // Act
+            var response = await _client.PostAsJsonAsync("/api/v1/appointments", appointment);
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+            var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+            problem.Should().NotBeNull();
+            problem!.Status.Should().Be(404);
+            ErrorCode(problem).Should().Be("Office.NotFound");
+            problem.Detail.Should().NotContain("FOREIGN KEY");
+
+            (await CountAppointmentsAsync(x => x.DentistId == dentistId)).Should().Be(0);
+        }
+
+        // ProblemDetails.Extensions values arrive as JsonElement after deserialisation.
+        private static string? ErrorCode(ProblemDetails problem)
+        {
+            if (!problem.Extensions.TryGetValue("errorCode", out var value))
+                return null;
+
+            return value is JsonElement element ? element.GetString() : value?.ToString();
+        }
+
+        private async Task<int> CountAppointmentsAsync(Expression<Func<Appointment, bool>> predicate)
+        {
+            using var scope = factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<DientesLimpiosDbContext>();
+
+            return await db.Appointments.CountAsync(predicate);
         }
 
         private async Task<(Guid patientId, Guid dentistId, Guid officeId)> SeedCoreEntitiesAsync()
