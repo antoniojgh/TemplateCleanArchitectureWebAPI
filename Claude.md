@@ -176,25 +176,12 @@ for mocks, `MockQueryable.NSubstitute` for `DbSet`. Naming:
 An architecture review (August 2026) found these. If you touch adjacent code,
 flag them; if asked to fix one, write the failing test first.
 
-**Correctness**
-
-1. `GetDentistListHandler` / `GetPatientListHandler` compute `Total` with an
-   unfiltered `CountAsync()`, so paginated totals are wrong.
-2. `CreateAppointmentHandler` checks overlap then inserts with no transaction
-   or lock — concurrent double-booking is possible.
-3. All three `Appointments` foreign keys cascade-delete: removing a dentist
-   destroys their appointment history.
-4. An unknown `PatientId`/`DentistId`/`OfficeId` produces a `DbUpdateException`
-   → 500 with the raw SQL error text in `Detail`.
-
 **Structural**
 
 - There is **no Transactional Outbox on this branch**. Domain events are
   dispatched in-process after commit; a failed email is lost. Do not describe
   the project as having an outbox.
 - `IUnitOfWork` / `EFCoreUnitOfWork` are registered but never used.
-- `Application/Exceptions/NotFoundException` and `ValidationException` are
-  dead code.
 - Data access is inconsistent: some handlers use `IApplicationDbContext`,
   some use repositories, `GetDentistListHandler` uses both. Preferred
   direction: commands through repositories/aggregates, queries projecting

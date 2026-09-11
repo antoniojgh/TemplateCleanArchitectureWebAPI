@@ -17,6 +17,10 @@ namespace DientesLimpios.Tests.API
         private const string SensitiveMessage =
             "The INSERT statement conflicted with the FOREIGN KEY constraint \"FK_Appointments_Patients_PatientId\".";
 
+        // Every exception reaching the handler is a bug or an infrastructure failure,
+        // so they all share one title — there is no per-type special casing left.
+        private const string ExpectedTitle = "An unexpected error occurred.";
+
         [Fact]
         public async Task TryHandleAsync_UnknownExceptionInProduction_DoesNotEchoExceptionMessage()
         {
@@ -32,12 +36,16 @@ namespace DientesLimpios.Tests.API
             context.Response.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
 
             var problem = await ReadProblemAsync(context);
-            problem.GetProperty("detail").GetString().Should().NotContain("FOREIGN KEY");
-            problem.GetProperty("detail").GetString().Should().NotContain("FK_Appointments_Patients_PatientId");
+            problem.GetProperty("title").GetString().Should().Be(ExpectedTitle);
+
+            // Tolerates either production choice for Detail: an opaque sentence or null.
+            var detail = Detail(problem) ?? string.Empty;
+            detail.Should().NotContain("FOREIGN KEY");
+            detail.Should().NotContain("FK_Appointments_Patients_PatientId");
         }
 
         [Fact]
-        public async Task TryHandleAsync_UnknownExceptionInDevelopment_EchoesExceptionMessage()
+        public async Task TryHandleAsync_UnknownExceptionInDevelopment_IncludesFullExceptionDetail()
         {
             // Arrange
             var handler = CreateHandler(Environments.Development);
@@ -46,64 +54,33 @@ namespace DientesLimpios.Tests.API
             // Act
             await handler.TryHandleAsync(context, new InvalidOperationException(SensitiveMessage), CancellationToken.None);
 
-            // Assert
+            // Assert — ToString(), not Message: the useful text for EF Core failures lives
+            // in the inner exception and the stack trace.
             context.Response.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
 
-            var problem = await ReadProblemAsync(context);
-            problem.GetProperty("detail").GetString().Should().Be(SensitiveMessage);
+            var detail = Detail(problem: await ReadProblemAsync(context));
+            detail.Should().NotBeNull();
+            detail!.Should().Contain(SensitiveMessage);
+            detail.Should().Contain(nameof(InvalidOperationException));
         }
 
         [Fact]
         public async Task TryHandleAsync_MediatorExceptionInProduction_DoesNotEchoExceptionMessage()
         {
-            // Arrange
+            // Arrange — MediatorException survives the cleanup (SimpleMediator still throws
+            // it), but it is no longer special-cased into its own title.
             var handler = CreateHandler(Environments.Production);
             var context = CreateContext();
 
             // Act
-            await handler.TryHandleAsync(context, new MediatorException("No handler registered for CreateAppointmentCommand"), CancellationToken.None);
+            await handler.TryHandleAsync(context, new MediatorException("No handler found for CreateAppointmentCommand"), CancellationToken.None);
 
             // Assert
             context.Response.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
 
             var problem = await ReadProblemAsync(context);
-            problem.GetProperty("title").GetString().Should().Be("Dispatch error");
-            problem.GetProperty("detail").GetString().Should().NotContain("CreateAppointmentCommand");
-        }
-
-        [Fact]
-        public async Task TryHandleAsync_NotFoundExceptionInProduction_EchoesExceptionMessage()
-        {
-            // Arrange
-            var handler = CreateHandler(Environments.Production);
-            var context = CreateContext();
-            var exception = new NotFoundException("Patient", Guid.Empty);
-
-            // Act
-            await handler.TryHandleAsync(context, exception, CancellationToken.None);
-
-            // Assert
-            context.Response.StatusCode.Should().Be(StatusCodes.Status404NotFound);
-
-            var problem = await ReadProblemAsync(context);
-            problem.GetProperty("detail").GetString().Should().Be(exception.Message);
-        }
-
-        [Fact]
-        public async Task TryHandleAsync_ValidationExceptionInProduction_EchoesExceptionMessage()
-        {
-            // Arrange
-            var handler = CreateHandler(Environments.Production);
-            var context = CreateContext();
-
-            // Act
-            await handler.TryHandleAsync(context, new ValidationException("Name is required"), CancellationToken.None);
-
-            // Assert
-            context.Response.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
-
-            var problem = await ReadProblemAsync(context);
-            problem.GetProperty("detail").GetString().Should().Be("Name is required");
+            problem.GetProperty("title").GetString().Should().Be(ExpectedTitle);
+            (Detail(problem) ?? string.Empty).Should().NotContain("CreateAppointmentCommand");
         }
 
         [Fact]
@@ -164,6 +141,12 @@ namespace DientesLimpios.Tests.API
 
             return document.RootElement.Clone();
         }
+
+        // "detail" may be an opaque sentence, JSON null, or absent altogether.
+        private static string? Detail(JsonElement problem) =>
+            problem.TryGetProperty("detail", out var detail) && detail.ValueKind != JsonValueKind.Null
+                ? detail.GetString()
+                : null;
 
         // DefaultHttpContext's response feature always reports HasStarted = false;
         // this override is the only way to exercise the already-started branch.

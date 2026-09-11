@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics;
-using DientesLimpios.Application.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
@@ -32,35 +31,20 @@ namespace DientesLimpios.API.ExceptionHandlers
             if (httpContext.Response.HasStarted)
                 return false;
 
-            // Safety net: these exception types are not thrown by current Domain/Application
-            // code (everything uses Result now), but the handler retains the mapping for
-            // future code paths that may still rely on exceptions for control flow.
-
-            var (status, title) = exception switch
-            {
-                NotFoundException => (StatusCodes.Status404NotFound, "Resource not found"),
-                ValidationException => (StatusCodes.Status400BadRequest, "Validation failed"),
-                MediatorException => (StatusCodes.Status500InternalServerError, "Dispatch error"),
-                _ => (StatusCodes.Status500InternalServerError, "Internal server error"),
-            };
-
-            // 4xx messages originate in our own exception types and are safe to return.
-            // 5xx messages originate anywhere, so they are only exposed in Development.
-            var exposeMessage = status < StatusCodes.Status500InternalServerError
-                                || environment.IsDevelopment();
-
+            // Anything reaching this handler is a bug or an infrastructure failure: expected
+            // business outcomes travel as Result/Error and never throw.
             var problem = new ProblemDetails
             {
-                Status = status,
-                Title = title,
-                Detail = exposeMessage ? exception.Message : OpaqueServerErrorDetail,
+                Status = StatusCodes.Status500InternalServerError,
+                Title = "An unexpected error occurred.",
+                Detail = environment.IsDevelopment() ? exception.ToString() : OpaqueServerErrorDetail,
                 Instance = httpContext.Request.Path,
-                Type = $"https://httpstatuses.io/{status}",
+                Type = "https://httpstatuses.io/500",
             };
 
             problem.Extensions["traceId"] = traceId;
 
-            httpContext.Response.StatusCode = status;
+            httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
             await httpContext.Response.WriteAsJsonAsync(problem, cancellationToken);
             return true;
         }
