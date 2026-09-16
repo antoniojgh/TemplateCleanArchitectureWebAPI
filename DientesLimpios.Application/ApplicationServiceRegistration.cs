@@ -1,6 +1,7 @@
 ﻿using DientesLimpios.Application.Utilities.Mediator;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace DientesLimpios.Application
 {
@@ -29,6 +30,8 @@ namespace DientesLimpios.Application
                     .AddClasses(c => c.AssignableTo(typeof(IDomainEventHandler<>)))
                     .AsImplementedInterfaces()
                     .WithScopedLifetime());
+
+            services.TryAddSingleton(TimeProvider.System);
 
 
             return services;

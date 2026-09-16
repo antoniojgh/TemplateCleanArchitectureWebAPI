@@ -10,8 +10,8 @@ namespace DientesLimpios.Domain.Events
         DateTime StartDate,
         DateTime EndDate) : IDomainEvent
     {
-        public Guid EventId { get; } = Guid.CreateVersion7();
-        public DateTime OccurredOnUtc { get; } = DateTime.UtcNow;
+        public Guid EventId { get; init; } = Guid.CreateVersion7();
+        public DateTime OccurredOnUtc { get; init; } = DateTime.UtcNow;
     }
 
 }

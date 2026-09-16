@@ -164,5 +164,40 @@ namespace DientesLimpios.Tests.Domain.Entities
             completeResult.IsFailure.Should().BeTrue();
             completeResult.Error.Should().Be(DomainErrors.Appointment.OnlyScheduledCanBeCompleted);
         }
+
+        [Fact]
+        public void MarkConfirmationSent_FirstTime_SetsConfirmationSentAtUtc()
+        {
+            // Arrange
+            var appointment = Appointment.Create(_patientId, _dentistId, _officeId,
+                _interval.Start, _interval.End, _nowUtc).Value;
+            var sentAt = _nowUtc.AddMinutes(5);
+
+            // Act
+            var result = appointment.MarkConfirmationSent(sentAt);
+
+            // Assert
+            result.IsSuccess.Should().BeTrue();
+            appointment.ConfirmationSentAtUtc.Should().Be(sentAt);
+        }
+
+        [Fact]
+        public void MarkConfirmationSent_AlreadySent_ReturnsFailureConfirmationAlreadySent()
+        {
+            // Arrange
+            var appointment = Appointment.Create(_patientId, _dentistId, _officeId,
+                _interval.Start, _interval.End, _nowUtc).Value;
+
+            appointment.MarkConfirmationSent(_nowUtc).IsSuccess.Should().BeTrue();
+
+            // Act
+            var result = appointment.MarkConfirmationSent(_nowUtc.AddMinutes(5));
+
+            // Assert
+            result.IsFailure.Should().BeTrue();
+            result.Error.Should().Be(DomainErrors.Appointment.ConfirmationAlreadySent);
+            appointment.ConfirmationSentAtUtc.Should().Be(_nowUtc);   // the first time wins
+        }
+
     }
 }

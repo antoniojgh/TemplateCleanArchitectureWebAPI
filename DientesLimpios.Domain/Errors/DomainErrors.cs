@@ -32,6 +32,10 @@ namespace DientesLimpios.Domain.Errors
             public static readonly Error Overlapping = new(
                 "Appointment.Overlapping",
                 "The dentist already has an appointment at that time.");
+
+            public static readonly Error ConfirmationAlreadySent = new(
+                "Appointment.ConfirmationAlreadySent",
+                "The confirmation for this appointment has already been sent.");
         }
 
         public static class Patient

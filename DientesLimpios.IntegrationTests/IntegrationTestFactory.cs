@@ -35,7 +35,7 @@ namespace DientesLimpios.IntegrationTests
                     options.UseSqlServer(_db.GetConnectionString());
                     options.AddInterceptors(
                         sp.GetRequiredService<AuditableEntitiesInterceptor>(),
-                        sp.GetRequiredService<DispatchDomainEventsInterceptor>());
+                        sp.GetRequiredService<InsertOutboxMessagesInterceptor>());
                 });
 
                 // 2) Replace Bearer auth with an always-authenticated test scheme

@@ -1,10 +1,11 @@
 ﻿using DientesLimpios.Application.Interfaces.Persistence;
 using DientesLimpios.Application.Interfaces.Repositories;
 using DientesLimpios.Persistence.Interceptors;
+using DientesLimpios.Persistence.Outbox;
 using DientesLimpios.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace DientesLimpios.Persistence
 {
@@ -18,7 +19,7 @@ namespace DientesLimpios.Persistence
 
             // Interceptors
             services.AddScoped<AuditableEntitiesInterceptor>();
-            services.AddScoped<DispatchDomainEventsInterceptor>();
+            services.AddSingleton<InsertOutboxMessagesInterceptor>();
 
 
             // CHANGED: AddDbContext now receives the IServiceProvider so it can resolve the interceptor.
@@ -27,7 +28,7 @@ namespace DientesLimpios.Persistence
                 options.UseSqlServer(connectionString);
                 options.AddInterceptors(
                     sp.GetRequiredService<AuditableEntitiesInterceptor>(),
-                    sp.GetRequiredService<DispatchDomainEventsInterceptor>());
+                    sp.GetRequiredService<InsertOutboxMessagesInterceptor>());
             });
 
 
@@ -39,6 +40,9 @@ namespace DientesLimpios.Persistence
             services.AddScoped<IPatientRepository, PatientRepository>();
             services.AddScoped<IDentistRepository, DentistRepository>();
             services.AddScoped<IAppointmentRepository, AppointmentRepository>();
+
+            // Dependency injection for OutboxProcessor
+            services.AddScoped<OutboxProcessor>();
 
             return services;
         }

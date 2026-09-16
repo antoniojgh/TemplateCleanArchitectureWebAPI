@@ -1,5 +1,6 @@
 ﻿using DientesLimpios.Application.Interfaces.Persistence;
 using DientesLimpios.Domain.Entities;
+using DientesLimpios.Persistence.Outbox;
 using Microsoft.EntityFrameworkCore;
 
 namespace DientesLimpios.Persistence
@@ -16,6 +17,7 @@ namespace DientesLimpios.Persistence
         public DbSet<Patient> Patients { get; set; }
         public DbSet<Dentist> Dentists { get; set; }
         public DbSet<Appointment> Appointments { get; set; }
+        public DbSet<OutboxMessage> OutboxMessages { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

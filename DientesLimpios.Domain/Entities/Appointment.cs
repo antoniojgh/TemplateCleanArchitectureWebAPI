@@ -14,6 +14,7 @@ namespace DientesLimpios.Domain.Entities
         public Guid OfficeId { get; private set; }
         public AppointmentStatus Status { get; private set; }
         public TimeInterval TimeInterval { get; private set; } = null!;
+        public DateTime? ConfirmationSentAtUtc { get; private set; }
         public Patient? Patient { get; private set; }
         public Dentist? Dentist { get; private set; }
         public Office? Office { get; private set; }
@@ -67,6 +68,15 @@ namespace DientesLimpios.Domain.Entities
                 return Result.Failure(DomainErrors.Appointment.OnlyScheduledCanBeCompleted);
 
             Status = AppointmentStatus.Completed;
+            return Result.Success();
+        }
+
+        public Result MarkConfirmationSent(DateTime nowUtc)
+        {
+            if (ConfirmationSentAtUtc is not null)
+                return Result.Failure(DomainErrors.Appointment.ConfirmationAlreadySent);
+
+            ConfirmationSentAtUtc = nowUtc;
             return Result.Success();
         }
     }

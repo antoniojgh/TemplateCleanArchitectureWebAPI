@@ -2,6 +2,7 @@ using Asp.Versioning;
 using DientesLimpios.API.ExceptionHandlers;
 using DientesLimpios.API.Jobs;
 using DientesLimpios.Application;
+using DientesLimpios.Application.Configuration;
 using DientesLimpios.Identity;
 using DientesLimpios.Identity.Models;
 using DientesLimpios.Infrastructure;
@@ -40,6 +41,15 @@ try
     builder.Services.AgregarServicesDeInfrastructure(builder.Configuration);
     builder.Services.AgregarServicesDeIdentity(builder.Configuration);
 
+    // Clinic settings. Validated at startup, so a bad time zone id fails here rather than
+    // at 08:00 when the reminder job runs.
+    builder.Services.AddOptions<ClinicOptions>()
+        .Bind(builder.Configuration.GetSection(ClinicOptions.SectionName))
+        .ValidateDataAnnotations()
+        .Validate(o => TimeZoneInfo.TryFindSystemTimeZoneById(o.TimeZoneId, out _),
+                  "Clinic:TimeZoneId is not a known time zone id.")
+        .ValidateOnStart();
+
     // Add the background service for appointment reminders
     builder.Services.AddHostedService<AppointmentReminderJob>();
 
@@ -65,6 +75,9 @@ try
     // Global exception handling configuration
     builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
     builder.Services.AddProblemDetails();
+
+    // Add the background service for processing outbox messages
+    builder.Services.AddHostedService<OutboxProcessorJob>();
 
     // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
     builder.Services.AddOpenApi();

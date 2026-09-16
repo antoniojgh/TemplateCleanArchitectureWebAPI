@@ -25,6 +25,7 @@ do not introduce new Spanish identifiers, comments, or messages.
 | Validation | FluentValidation (commands) + domain factories |
 | Auth | ASP.NET Core Identity + `MapIdentityApi`, bearer tokens |
 | Logging | Serilog (structured) |
+| Reliability | Transactional Outbox (`OutboxMessages` + `OutboxProcessorJob`) |
 | Tests | xUnit, NSubstitute, FluentAssertions, NetArchTest, Testcontainers |
 | API | Controllers + URL-segment versioning (`/api/v1/...`), OpenAPI |
 
@@ -157,10 +158,30 @@ propose a pipeline rather than copying more boilerplate.
 ### Persistence
 
 Cross-cutting persistence behaviour goes in `SaveChangesInterceptor`s
-(`AuditableEntitiesInterceptor`, `DispatchDomainEventsInterceptor`), not in
+(`AuditableEntitiesInterceptor`, `InsertOutboxMessagesInterceptor`), not in
 `DbContext` overrides. Entity configuration goes in
 `Persistence/Configurations/*Config.cs`, applied by
 `ApplyConfigurationsFromAssembly`.
+
+### Domain events and the outbox
+
+Aggregates raise events with `RaiseDomainEvent`. `InsertOutboxMessagesInterceptor`
+turns them into `OutboxMessages` rows inside the same `SaveChanges`, so an event
+commits — or rolls back — with the aggregate, and nothing is dispatched during the
+request. `OutboxProcessorJob` polls every 5 s; `OutboxProcessor` claims a batch
+with `UPDLOCK, READPAST, ROWLOCK` (so several API instances never take the same
+row), dispatches each message in its own DI scope, and records `ProcessedOnUtc`
+or `AttemptCount` + `Error`.
+
+What this demands of new code:
+
+- Event handlers must be **idempotent** and must let exceptions **propagate**.
+  Swallowing one tells the processor the message succeeded, which is the bug the
+  outbox exists to prevent.
+- Event payloads are serialised as JSON, so every property needs an accessible
+  setter (`init`, not `get`-only) or it comes back with a fresh value.
+- `OutboxSerializer` resolves an event by its short type name against the Domain
+  assembly; two events with the same name in different namespaces fail at startup.
 
 ### Tests
 
@@ -173,25 +194,47 @@ for mocks, `MockQueryable.NSubstitute` for `DbSet`. Naming:
 
 ## Known issues — do not "fix" silently, and do not replicate
 
-An architecture review (August 2026) found these. If you touch adjacent code,
-flag them; if asked to fix one, write the failing test first.
+An architecture review (August 2026) found these; the list was re-verified
+against the code on 16 September 2026. If you touch adjacent code, flag them; if
+asked to fix one, write the failing test first.
 
 **Structural**
 
-- There is **no Transactional Outbox on this branch**. Domain events are
-  dispatched in-process after commit; a failed email is lost. Do not describe
-  the project as having an outbox.
-- `IUnitOfWork` / `EFCoreUnitOfWork` are registered but never used.
-- Data access is inconsistent: some handlers use `IApplicationDbContext`,
-  some use repositories, `GetDentistListHandler` uses both. Preferred
-  direction: commands through repositories/aggregates, queries projecting
-  straight to DTOs with `AsNoTracking().Select(...)`.
-- Validation is duplicated across API DataAnnotations, FluentValidation, and
-  the domain, with divergent rules.
-- No indexes beyond primary keys; no concurrency tokens.
-- `DateTime.UtcNow` is called directly in ~8 places; there is no
-  `TimeProvider` and no stated UTC convention.
+- Data access is inconsistent: most handlers use `IApplicationDbContext`
+  directly, the appointment use cases go through `IAppointmentRepository`, and
+  `CreateAppointmentHandler` and `AppointmentCreatedEmailHandler` use both.
+  Preferred direction: commands through repositories/aggregates, queries
+  projecting straight to DTOs with `AsNoTracking().Select(...)`.
+- Validation is duplicated across API DataAnnotations (`API/DTOs/**`),
+  FluentValidation validators and the domain factories, with divergent rules.
+- No optimistic-concurrency tokens (`rowversion`) on any aggregate. Indexes are
+  the EF Core defaults for foreign keys plus the filtered index on
+  `OutboxMessages`; the appointment-overlap query has no covering index.
+- `DateTime.UtcNow` is still called directly in four non-test files
+  (`CreateAppointmentCommandValidator`, `AppointmentCreatedEvent`,
+  `AuditableEntitiesInterceptor`, `AppointmentRepository`). `TimeProvider` is
+  registered in `ApplicationServiceRegistration` and used by the outbox path and
+  the reminder use case — new code should take it rather than adding a fifth
+  call site.
+- `SimpleMediator` still dispatches requests by reflection (`GetMethod` +
+  `Invoke`). `DomainEventDispatcher` no longer does: it uses a cached generic
+  wrapper, which is the technique to copy when reworking the mediator.
 - `.github/workflows/` is empty — there is no CI.
+
+**The outbox is implemented — know its limits**
+
+`Persistence/Outbox/`, `InsertOutboxMessagesInterceptor` and `OutboxProcessorJob`
+implement it. Storing an event with its aggregate is atomic, but delivery is not
+exactly-once, so do not describe it that way:
+
+- Delivery is **at-least-once**. `AppointmentCreatedEmailHandler` is idempotent
+  through `Appointment.ConfirmationSentAtUtc`, which narrows, but cannot close,
+  the window between sending an email and recording that it was sent.
+- A message stops being retried after `OutboxProcessor.MaxAttempts` (5) and stays
+  in the table with `Error` set. There is no backoff between attempts, no
+  dead-letter view and no alerting.
+- `ProcessBatch` holds one transaction open for a whole batch, so a hung SMTP
+  call holds it too (`SmtpClient.Timeout` defaults to 100 s).
 
 ---
 
@@ -200,14 +243,20 @@ flag them; if asked to fix one, write the failing test first.
 These Spanish remnants exist. Do not add more; renaming them is welcome when
 you are already editing the file, as an explicit, separate change:
 
-`Pagina` → `Page` · `RegistrosPorPagina` → `PageSize` · `Elementos` → `Items` ·
-`Paginar` → `Paginate` · `ADto` → projection or `ToDto` ·
-`AgregarServicesDeX` → `AddXServices` · policy `"esadmin"` → `"Admin"` ·
-header `cantidad-total-registros` → `X-Total-Count` ·
-`"Validacion.General"` → `"Validation.General"` · Spanish validator messages.
+`Paginar` → `Paginate` (`Persistence/Utilities/IQueryableExtensions.cs` and its
+two callers) · `ADto` → projection or `ToDto` (20 sites) ·
+`AgregarServicesDeX` → `AddXServices` (8 sites) · policy `"esadmin"` → `"Admin"`
+(`Program.cs`, `IdentityServiceRegistration`, `TestAuthHandler`) ·
+`"Validacion.General"` → `"Validation.General"` (`ValidationError`) ·
+header `total-number-of-records` → `X-Total-Count` · `PagedDTO.Elements` → `Items`.
 
-The README is stale (it still describes MediatR, AutoMapper, and the old
-Spanish project names) — do not use it as a source of truth about the code.
+Already done — do not re-report these: `Pagina` / `RegistrosPorPagina` →
+`Page` / `RecordsPerPage`, `Elementos` → `Elements`, and the FluentValidation
+messages, which are all English now.
+
+The README was rewritten on 16 September 2026 and describes the current code
+(custom mediator, hand-written mappers, outbox). It is no longer stale — keep it
+in step when you change the architecture.
 
 ---
 

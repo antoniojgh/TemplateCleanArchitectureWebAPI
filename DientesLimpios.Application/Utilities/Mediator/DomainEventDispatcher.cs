@@ -1,33 +1,21 @@
-﻿using DientesLimpios.Domain.Common;
-using Microsoft.Extensions.DependencyInjection;
-
+﻿using System.Collections.Concurrent;
+using DientesLimpios.Domain.Common;
 
 namespace DientesLimpios.Application.Utilities.Mediator
 {
-    public sealed class DomainEventDispatcher : IDomainEventDispatcher
+    public sealed class DomainEventDispatcher(IServiceProvider serviceProvider) : IDomainEventDispatcher
     {
-        private readonly IServiceProvider _serviceProvider;
+        private static readonly ConcurrentDictionary<Type, DomainEventHandlerWrapper> Wrappers = new();
 
-        public DomainEventDispatcher(IServiceProvider serviceProvider)
+        public Task Dispatch(IDomainEvent domainEvent, CancellationToken cancellationToken)
         {
-            _serviceProvider = serviceProvider;
-        }
+            ArgumentNullException.ThrowIfNull(domainEvent);
 
-        public async Task Dispatch(IDomainEvent domainEvent, CancellationToken cancellationToken)
-        {
-            // Resolve IDomainEventHandler<TConcreteEvent> for the runtime type.
-            var handlerType = typeof(IDomainEventHandler<>).MakeGenericType(domainEvent.GetType());
+            var wrapper = Wrappers.GetOrAdd(domainEvent.GetType(), static eventType =>
+                (DomainEventHandlerWrapper)Activator.CreateInstance(
+                    typeof(DomainEventHandlerWrapper<>).MakeGenericType(eventType))!);
 
-            var handlers = _serviceProvider.GetServices(handlerType);
-
-            foreach (var handler in handlers)
-            {
-                if (handler is null) continue;
-
-                var method = handlerType.GetMethod(nameof(IDomainEventHandler<IDomainEvent>.Handle))!;
-                await (Task)method.Invoke(handler, new object[] { domainEvent, cancellationToken })!;
-            }
+            return wrapper.Handle(domainEvent, serviceProvider, cancellationToken);
         }
     }
-
 }

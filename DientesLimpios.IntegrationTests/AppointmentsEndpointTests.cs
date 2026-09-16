@@ -1,15 +1,17 @@
 ﻿using System.Linq.Expressions;
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using DientesLimpios.API.DTOs.Appointments;
+using DientesLimpios.Application.UseCases.Appointments.Queries.GetAppointmentDetail;
 using DientesLimpios.Domain.Entities;
+using DientesLimpios.Domain.Events;
 using DientesLimpios.Persistence;
+using DientesLimpios.Persistence.Outbox;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using System.Text.Json;
-using DientesLimpios.Application.UseCases.Appointments.Queries.GetAppointmentDetail;
 
 
 namespace DientesLimpios.IntegrationTests
@@ -49,11 +51,47 @@ namespace DientesLimpios.IntegrationTests
             // Adjust the property name if your DTO differs:
             detail!.Id.Should().Be(createdId);
 
-            // The domain event is now dispatched after the transaction commits, not inside
-            // it. Assert it still reaches its handler — deferring must not mean dropping.
+            // The event is stored in the outbox and delivered after the request completes.
+            // Hosted services are removed in tests, so deliver it explicitly.
+            await ProcessOutboxAsync();
+
             var notifications = factory.Services.GetRequiredService<RecordingNotificationService>();
             notifications.Confirmations.Should().ContainSingle(c => c.Id == createdId);
         }
+
+        [Fact]
+        public async Task Post_ValidAppointment_WritesOutboxMessageWithTheAppointment()
+        {
+            // Arrange
+            var (patientId, dentistId, officeId) = await SeedCoreEntitiesAsync();
+            var start = DateTime.UtcNow.AddDays(1);
+
+            // Act
+            var post = await _client.PostAsJsonAsync("/api/v1/appointments", new CreateAppointmentDTO
+            {
+                PatientId = patientId,
+                DentistId = dentistId,
+                OfficeId = officeId,
+                StartDate = start,
+                EndDate = start.AddHours(1)
+            });
+
+            // Assert
+            post.StatusCode.Should().Be(HttpStatusCode.Created);
+            var appointmentId = await post.Content.ReadFromJsonAsync<Guid>();
+
+            using var scope = factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<DientesLimpiosDbContext>();
+
+            var messages = await db.OutboxMessages
+                .Where(m => m.Type == nameof(AppointmentCreatedEvent) && m.ProcessedOnUtc == null)
+                .ToListAsync();
+
+            messages.Select(OutboxSerializer.ToDomainEvent)
+                .OfType<AppointmentCreatedEvent>()
+                .Should().ContainSingle(e => e.AppointmentId == appointmentId);
+        }
+
 
         [Fact]
         public async Task Post_OverlappingForSameDentist_Returns409_ProblemDetails()
@@ -264,6 +302,96 @@ namespace DientesLimpios.IntegrationTests
             (await CountAppointmentsAsync(x => x.DentistId == dentistId)).Should().Be(0);
         }
 
+        [Fact]
+        public async Task Outbox_ConfirmationFailsOnce_MessageIsRetriedAndEmailSentOnce()
+        {
+            // Arrange — drain what earlier tests left behind, so the appointment created here
+            // is the only pending message.
+            await ProcessOutboxAsync();
+
+            var (patientId, dentistId, officeId) = await SeedCoreEntitiesAsync();
+            var start = DateTime.UtcNow.AddDays(1);
+
+            var post = await _client.PostAsJsonAsync("/api/v1/appointments", new CreateAppointmentDTO
+            {
+                PatientId = patientId,
+                DentistId = dentistId,
+                OfficeId = officeId,
+                StartDate = start,
+                EndDate = start.AddHours(1)
+            });
+
+            post.StatusCode.Should().Be(HttpStatusCode.Created);
+            var appointmentId = await post.Content.ReadFromJsonAsync<Guid>();
+
+            var notifications = factory.Services.GetRequiredService<RecordingNotificationService>();
+            notifications.FailNextConfirmationFor(appointmentId);
+
+            // Act — first delivery, which the notification service rejects.
+            await ProcessOutboxOnceAsync();
+
+            // Assert — the failure is recorded and the message stays pending for a retry.
+            var afterFailure = await GetOutboxMessageAsync(appointmentId);
+            afterFailure.ProcessedOnUtc.Should().BeNull();
+            afterFailure.AttemptCount.Should().Be(1);
+            afterFailure.Error.Should().Contain("Simulated SMTP failure");
+            notifications.Confirmations.Should().NotContain(c => c.Id == appointmentId);
+
+            // Act — second delivery, which succeeds.
+            await ProcessOutboxOnceAsync();
+
+            // Assert — delivered exactly once in total.
+            var afterRetry = await GetOutboxMessageAsync(appointmentId);
+            afterRetry.ProcessedOnUtc.Should().NotBeNull();
+            afterRetry.Error.Should().BeNull();
+            notifications.Confirmations.Should().ContainSingle(c => c.Id == appointmentId);
+        }
+
+        [Fact]
+        public async Task Outbox_MessageRedelivered_ConfirmationIsNotSentTwice()
+        {
+            // Arrange — one appointment, delivered once.
+            await ProcessOutboxAsync();
+
+            var (patientId, dentistId, officeId) = await SeedCoreEntitiesAsync();
+            var start = DateTime.UtcNow.AddDays(1);
+
+            var post = await _client.PostAsJsonAsync("/api/v1/appointments", new CreateAppointmentDTO
+            {
+                PatientId = patientId,
+                DentistId = dentistId,
+                OfficeId = officeId,
+                StartDate = start,
+                EndDate = start.AddHours(1)
+            });
+
+            post.StatusCode.Should().Be(HttpStatusCode.Created);
+            var appointmentId = await post.Content.ReadFromJsonAsync<Guid>();
+
+            await ProcessOutboxOnceAsync();
+
+            var notifications = factory.Services.GetRequiredService<RecordingNotificationService>();
+            notifications.Confirmations.Should().ContainSingle(c => c.Id == appointmentId);
+
+            // Act — simulate the crash window: the message was delivered but never marked,
+            // so the processor picks it up again.
+            var message = await GetOutboxMessageAsync(appointmentId);
+
+            using (var scope = factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<DientesLimpiosDbContext>();
+                await db.OutboxMessages
+                    .Where(m => m.Id == message.Id)
+                    .ExecuteUpdateAsync(s => s.SetProperty(m => m.ProcessedOnUtc, (DateTime?)null));
+            }
+
+            await ProcessOutboxOnceAsync();
+
+            // Assert — the handler recognised the appointment was already confirmed.
+            notifications.Confirmations.Should().ContainSingle(c => c.Id == appointmentId);
+        }
+
+
         // ProblemDetails.Extensions values arrive as JsonElement after deserialisation.
         private static string? ErrorCode(ProblemDetails problem)
         {
@@ -297,6 +425,44 @@ namespace DientesLimpios.IntegrationTests
 
             return (patient.Id, dentist.Id, office.Id);
         }
+
+        // Delivers every pending outbox message, the way OutboxProcessorJob would in production.
+        // Keeps processing while batches come back full, because other tests in this collection
+        // leave their own messages in the shared database.
+        private async Task ProcessOutboxAsync()
+        {
+            using var scope = factory.Services.CreateScope();
+            var processor = scope.ServiceProvider.GetRequiredService<OutboxProcessor>();
+
+            while (await processor.ProcessBatch(CancellationToken.None) == OutboxProcessor.BatchSize) { }
+        }
+
+        // Processes exactly one batch. The tests below assert on attempt counts, so they
+        // cannot use ProcessOutboxAsync: its drain loop could retry the same message again
+        // within one call.
+        private async Task<int> ProcessOutboxOnceAsync()
+        {
+            using var scope = factory.Services.CreateScope();
+            var processor = scope.ServiceProvider.GetRequiredService<OutboxProcessor>();
+
+            return await processor.ProcessBatch(CancellationToken.None);
+        }
+
+        // Reads the outbox row for one appointment. A new scope each time, so the state comes
+        // from the database and not from a DbContext cache.
+        private async Task<OutboxMessage> GetOutboxMessageAsync(Guid appointmentId)
+        {
+            using var scope = factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<DientesLimpiosDbContext>();
+
+            var messages = await db.OutboxMessages
+                .Where(m => m.Type == nameof(AppointmentCreatedEvent))
+                .ToListAsync();
+
+            return messages.Single(m => OutboxSerializer.ToDomainEvent(m) is AppointmentCreatedEvent e
+                                        && e.AppointmentId == appointmentId);
+        }
+
     }
 
 }

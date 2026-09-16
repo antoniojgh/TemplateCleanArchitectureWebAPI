@@ -2,7 +2,7 @@
 {
     public interface INotificationService
     {
-        Task SendAppointmentConfirmation(AppointmentConfirmationDTO appointment);
-        Task SendAppointmentReminder(AppointmentReminderDTO appointment);
+        Task SendAppointmentConfirmation(AppointmentConfirmationDTO appointment, CancellationToken cancellationToken);
+        Task SendAppointmentReminder(AppointmentReminderDTO appointment, CancellationToken cancellationToken);
     }
 }

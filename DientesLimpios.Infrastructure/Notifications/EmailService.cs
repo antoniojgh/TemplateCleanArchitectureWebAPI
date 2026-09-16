@@ -11,7 +11,7 @@ namespace DientesLimpios.Infrastructure.Notifications
     {
         private readonly EmailOptions _options = options.Value;
 
-        public async Task SendAppointmentConfirmation(AppointmentConfirmationDTO appointment)
+        public async Task SendAppointmentConfirmation(AppointmentConfirmationDTO appointment, CancellationToken cancellationToken)
         {
             var subject = "Appointment Confirmation - Dientes Limpios";
 
@@ -25,10 +25,10 @@ namespace DientesLimpios.Infrastructure.Notifications
             The Dientes Limpios Team
             """;
 
-            await SendMessage(appointment.PatientEmail, subject, body);
+            await SendMessage(appointment.PatientEmail, subject, body, cancellationToken);
         }
 
-        public async Task SendAppointmentReminder(AppointmentReminderDTO appointment)
+        public async Task SendAppointmentReminder(AppointmentReminderDTO appointment, CancellationToken cancellationToken)
         {
             var subject = "REMINDER: Appointment Confirmation - Dientes Limpios";
 
@@ -42,10 +42,10 @@ namespace DientesLimpios.Infrastructure.Notifications
             The Dientes Limpios Team
             """;
 
-            await SendMessage(appointment.PatientEmail, subject, body);
+            await SendMessage(appointment.PatientEmail, subject, body, cancellationToken);
         }
 
-        private async Task SendMessage(string recipientEmail, string subject, string body)
+        private async Task SendMessage(string recipientEmail, string subject, string body, CancellationToken cancellationToken)
         {
             logger.LogInformation("Preparing to send email to {Recipient}. Subject: {Subject}", recipientEmail, subject);
 
@@ -59,7 +59,7 @@ namespace DientesLimpios.Infrastructure.Notifications
                 };
 
                 using var message = new MailMessage(_options.Email, recipientEmail, subject, body);
-                await smtpClient.SendMailAsync(message);
+                await smtpClient.SendMailAsync(message, cancellationToken);
 
                 logger.LogInformation("Email sent successfully to {Recipient}", recipientEmail);
             }
