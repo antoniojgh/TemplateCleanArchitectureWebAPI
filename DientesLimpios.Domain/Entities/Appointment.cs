@@ -47,7 +47,7 @@ namespace DientesLimpios.Domain.Entities
                 patientId, dentistId, officeId, intervalResult.Value);
 
             appointment.RaiseDomainEvent(new AppointmentCreatedEvent(
-                appointment.Id, patientId, dentistId, officeId, startDate, endDate));
+                appointment.Id, patientId, dentistId, officeId, startDate, endDate, nowUtc));
 
 
             return Result.Success(appointment);

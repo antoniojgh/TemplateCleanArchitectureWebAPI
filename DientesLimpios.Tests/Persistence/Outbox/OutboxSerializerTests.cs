@@ -13,7 +13,7 @@ namespace DientesLimpios.Tests.Persistence.Outbox
             var start = DateTime.UtcNow.AddDays(1);
             var original = new AppointmentCreatedEvent(
                 Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(),
-                start, start.AddHours(1));
+                start, start.AddHours(1), new DateTime(2026, 9, 16, 8, 30, 0, DateTimeKind.Utc));
 
             // Act
             var message = OutboxSerializer.ToOutboxMessage(original);

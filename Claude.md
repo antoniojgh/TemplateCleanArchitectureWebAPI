@@ -26,7 +26,7 @@ do not introduce new Spanish identifiers, comments, or messages.
 | Auth | ASP.NET Core Identity + `MapIdentityApi`, bearer tokens |
 | Logging | Serilog (structured) |
 | Reliability | Transactional Outbox (`OutboxMessages` + `OutboxProcessorJob`) |
-| Tests | xUnit, NSubstitute, FluentAssertions, NetArchTest, Testcontainers |
+| Tests | xUnit, NSubstitute, FluentAssertions, NetArchTest, Testcontainers, FakeTimeProvider (only for code that waits on time) |
 | API | Controllers + URL-segment versioning (`/api/v1/...`), OpenAPI |
 
 ---
@@ -168,10 +168,10 @@ Cross-cutting persistence behaviour goes in `SaveChangesInterceptor`s
 Aggregates raise events with `RaiseDomainEvent`. `InsertOutboxMessagesInterceptor`
 turns them into `OutboxMessages` rows inside the same `SaveChanges`, so an event
 commits — or rolls back — with the aggregate, and nothing is dispatched during the
-request. `OutboxProcessorJob` polls every 5 s; `OutboxProcessor` claims a batch
-with `UPDLOCK, READPAST, ROWLOCK` (so several API instances never take the same
-row), dispatches each message in its own DI scope, and records `ProcessedOnUtc`
-or `AttemptCount` + `Error`.
+request. `OutboxProcessorJob` polls on the interval set by its `PollingInterval`
+constant; `OutboxProcessor` claims a batch with `UPDLOCK, READPAST, ROWLOCK` (so
+several API instances never take the same row), dispatches each message in its
+own DI scope, and records `ProcessedOnUtc` or `AttemptCount` + `Error`.
 
 What this demands of new code:
 
@@ -182,6 +182,30 @@ What this demands of new code:
   setter (`init`, not `get`-only) or it comes back with a fresh value.
 - `OutboxSerializer` resolves an event by its short type name against the Domain
   assembly; two events with the same name in different namespaces fail at startup.
+- Events take `OccurredOnUtc` as a constructor parameter, supplied from the
+  aggregate method's `nowUtc` argument (see `Appointment.Create`). Domain never
+  reads the clock.
+
+### Time
+
+Non-test code never calls `DateTime.UtcNow` or `DateTime.Now`. It takes the
+injected `TimeProvider`, registered once in `ApplicationServiceRegistration`.
+
+- **Domain** stays free of the abstraction and receives the instant as a
+  parameter (`Appointment.Create(..., nowUtc)`, `MarkConfirmationSent(nowUtc)`).
+- **Validators** read the clock inside a lambda
+  (`GreaterThan(_ => timeProvider.GetUtcNow().UtcDateTime)`). A plain value is
+  captured once, when the validator is constructed.
+- **Waits** use the overloads that take the provider, such as
+  `Task.Delay(delay, timeProvider, ct)`. The plain overloads use the real clock,
+  so `FakeTimeProvider.Advance` could never release them in a test.
+- **"Today" and "tomorrow" are days at the clinic**, not UTC days. Convert with
+  `ClinicOptions.TimeZoneId`, then back to UTC for queries: appointments are
+  stored in UTC. See `SendAppointmentRemindersHandler`.
+
+In tests, `Substitute.For<TimeProvider>()` is enough when the code only reads a
+fixed instant. Use `FakeTimeProvider` only when the code under test waits on
+time (see `AppointmentReminderJobTests`).
 
 ### Tests
 
@@ -210,12 +234,12 @@ asked to fix one, write the failing test first.
 - No optimistic-concurrency tokens (`rowversion`) on any aggregate. Indexes are
   the EF Core defaults for foreign keys plus the filtered index on
   `OutboxMessages`; the appointment-overlap query has no covering index.
-- `DateTime.UtcNow` is still called directly in four non-test files
-  (`CreateAppointmentCommandValidator`, `AppointmentCreatedEvent`,
-  `AuditableEntitiesInterceptor`, `AppointmentRepository`). `TimeProvider` is
-  registered in `ApplicationServiceRegistration` and used by the outbox path and
-  the reminder use case — new code should take it rather than adding a fifth
-  call site.
+- `AppointmentReminderJob` checks the clinic clock once an hour and sends when
+  the hour is 8. While the process stays up it fires once a day, but at an
+  imprecise minute (anywhere from 08:00 to 08:59, depending on start time). A
+  restart during that hour sends the reminders twice, and downtime covering the
+  whole hour skips the day. A fix needs persisted "last run" state;
+  `AppointmentReminderJobTests` already drives the schedule with `FakeTimeProvider`.
 - `SimpleMediator` still dispatches requests by reflection (`GetMethod` +
   `Invoke`). `DomainEventDispatcher` no longer does: it uses a cached generic
   wrapper, which is the technique to copy when reworking the mediator.

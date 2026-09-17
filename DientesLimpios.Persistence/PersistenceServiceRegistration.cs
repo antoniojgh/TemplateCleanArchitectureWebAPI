@@ -6,6 +6,7 @@ using DientesLimpios.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace DientesLimpios.Persistence
 {
@@ -43,6 +44,9 @@ namespace DientesLimpios.Persistence
 
             // Dependency injection for OutboxProcessor
             services.AddScoped<OutboxProcessor>();
+
+            // Dependency injection for TimeProvider
+            services.TryAddSingleton(TimeProvider.System);
 
             return services;
         }

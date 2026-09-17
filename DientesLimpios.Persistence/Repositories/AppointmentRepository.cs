@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DientesLimpios.Persistence.Repositories
 {
-    public sealed class AppointmentRepository(DientesLimpiosDbContext context) : IAppointmentRepository
+    public sealed class AppointmentRepository(DientesLimpiosDbContext context, TimeProvider timeProvider) : IAppointmentRepository
     {
         // How long a caller waits for another booking on the same dentist to finish
         // before the request fails outright rather than queueing indefinitely.
@@ -52,7 +52,7 @@ namespace DientesLimpios.Persistence.Repositories
             // The slot is free and the lock is held until this transaction ends, so the booking
             // is now a fact. Only here is it correct to construct the aggregate and let it raise
             // its creation event.
-            var appointmentResult = Appointment.Create(patientId, dentistId, officeId, start, end, DateTime.UtcNow);
+            var appointmentResult = Appointment.Create(patientId, dentistId, officeId, start, end, timeProvider.GetUtcNow().UtcDateTime);
 
             if (appointmentResult.IsFailure)
                 return Result.Failure<Guid>(appointmentResult.Error);

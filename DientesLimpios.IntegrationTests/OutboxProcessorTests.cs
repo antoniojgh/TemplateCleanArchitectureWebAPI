@@ -55,11 +55,14 @@ namespace DientesLimpios.IntegrationTests
             using var scope = factory.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<DientesLimpiosDbContext>();
 
+            // The app's clock, so these rows are ordered consistently with the ones it writes.
+            var now = scope.ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow().UtcDateTime;
+
             for (var i = 0; i < count; i++)
             {
                 var start = DateTime.UtcNow.AddDays(1);
                 var domainEvent = new AppointmentCreatedEvent(Guid.CreateVersion7(), Guid.CreateVersion7(),
-                    Guid.CreateVersion7(), Guid.CreateVersion7(), start, start.AddHours(1));
+                    Guid.CreateVersion7(), Guid.CreateVersion7(), start, start.AddHours(1), now);
 
                 db.OutboxMessages.Add(OutboxSerializer.ToOutboxMessage(domainEvent));
             }

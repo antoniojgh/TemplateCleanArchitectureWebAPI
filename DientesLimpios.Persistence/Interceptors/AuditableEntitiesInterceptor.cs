@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace DientesLimpios.Persistence.Interceptors
 {
-    public sealed class AuditableEntitiesInterceptor(IUserService userService) : SaveChangesInterceptor
+    public sealed class AuditableEntitiesInterceptor(IUserService userService, TimeProvider timeProvider) : SaveChangesInterceptor
     {
         public override ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData, 
                                                             InterceptionResult<int> result, CancellationToken cancellationToken = default)
@@ -15,7 +15,7 @@ namespace DientesLimpios.Persistence.Interceptors
             if (eventData.Context is null)
                 return base.SavingChangesAsync(eventData, result, cancellationToken);
 
-            var now = DateTime.UtcNow;
+            var now = timeProvider.GetUtcNow().UtcDateTime;
             var userId = userService.GetUserId();
 
             foreach (EntityEntry<AggregateRoot> entry in

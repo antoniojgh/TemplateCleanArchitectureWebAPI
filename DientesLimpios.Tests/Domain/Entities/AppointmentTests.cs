@@ -199,5 +199,22 @@ namespace DientesLimpios.Tests.Domain.Entities
             appointment.ConfirmationSentAtUtc.Should().Be(_nowUtc);   // the first time wins
         }
 
+        [Fact]
+        public void Create_OnSuccess_EventOccursAtTheGivenInstant()
+        {
+            // Arrange — an instant far from the real clock, so only a value passed in can match.
+            var nowUtc = new DateTime(2020, 1, 1, 9, 0, 0, DateTimeKind.Utc);
+
+            // Act
+            var appointment = Appointment.Create(_patientId, _dentistId, _officeId,
+                _interval.Start, _interval.End, nowUtc).Value;
+
+            // Assert
+            appointment.DomainEvents
+                .OfType<AppointmentCreatedEvent>()
+                .Should().ContainSingle()
+                .Which.OccurredOnUtc.Should().Be(nowUtc);
+        }
+
     }
 }

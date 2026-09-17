@@ -42,8 +42,8 @@ namespace DientesLimpios.API.Jobs
                     }
                 }
 
-                // Wait one hour before checking again
-                await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
+                // Wait one hour before checking again, on the injected clock so tests can advance it.
+                await Task.Delay(TimeSpan.FromHours(1), timeProvider, stoppingToken);
             }
         }
 
