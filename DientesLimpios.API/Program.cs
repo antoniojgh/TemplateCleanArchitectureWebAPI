@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using DientesLimpios.API.ExceptionHandlers;
 using DientesLimpios.API.Jobs;
+using DientesLimpios.API.Json;
 using DientesLimpios.Application;
 using DientesLimpios.Application.Configuration;
 using DientesLimpios.Identity;
@@ -33,7 +34,9 @@ try
     {
         // Adds a global authorization filter to protect all endpoints by default
         options.Filters.Add(new AuthorizeFilter("esadmin"));
-    });
+    })
+    .AddJsonOptions(options =>
+        options.JsonSerializerOptions.Converters.Add(new UtcDateTimeJsonConverter()));
 
     // Dependency injection for Application, Persistence and Infrastructure layers
     builder.Services.AgregarServicesDeApplication();

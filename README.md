@@ -145,9 +145,10 @@ The flow (`Persistence/Outbox/`):
 2. `InsertOutboxMessagesInterceptor`, a `SaveChangesInterceptor`, serialises every
    pending event into an `OutboxMessages` row **during the same `SaveChanges`**,
    so event and appointment commit — or roll back — together.
-3. `OutboxProcessorJob` polls every 5 seconds. `OutboxProcessor` claims a batch
-   with `WITH (UPDLOCK, READPAST, ROWLOCK)`, so several API instances can run at
-   once without ever picking up the same message.
+3. `OutboxProcessorJob` polls on a fixed interval (its `PollingInterval`
+   constant). `OutboxProcessor` claims a batch with
+   `WITH (UPDLOCK, READPAST, ROWLOCK)`, so several API instances can run at once
+   without ever picking up the same message.
 4. Each message is dispatched in its own DI scope and then marked
    `ProcessedOnUtc`, or `AttemptCount` plus `Error` when the handler throws.
    Retries stop after 5 attempts.
@@ -177,6 +178,29 @@ overlapping requests concurrently and asserts exactly one 201 and one 409.
 All three foreign keys use `DeleteBehavior.Restrict`. Deleting a dentist who has
 history returns 409 with an `errorCode`, and the database refuses the delete as a
 backstop. Appointments are medical and financial history.
+
+### Time: UTC inside, clinic time at the edges
+
+Scheduling systems collect time bugs, so the convention is explicit and enforced
+at every boundary: **every `DateTime` inside the application is UTC**, and a local
+clock time exists only where a person reads it.
+
+- **API:** a `JsonConverter` accepts only ISO 8601 with an offset or `Z`, and
+  always answers with `Z`. `10:00:00` with no zone is ambiguous, so it is a 400
+  rather than a guess. Query-string filters are bound to UTC and validated.
+- **Database:** an EF Core convention puts a value converter on every `DateTime`
+  column. Writing a non-UTC value throws; every value read back is marked UTC, so
+  it compares correctly in memory and serialises with `Z`.
+- **Clock:** code never reads `DateTime.UtcNow`. It takes an injected
+  `TimeProvider`, and the Domain receives "now" as a parameter, so tests can pin
+  time, or advance it with `FakeTimeProvider` for the reminder job's schedule.
+- **Clinic time:** "tomorrow" for reminders, and the times in emails, are computed
+  in the clinic's zone (`Clinic:TimeZoneId`), then converted back to UTC for
+  queries.
+
+**Why UTC `DateTime` rather than `DateTimeOffset`:** for a physical clinic, the
+offset that matters is the clinic's, not the caller's. Preserving each client's
+offset would buy little, while UTC keeps comparisons and SQL predicates simple.
 
 ### Cross-cutting persistence lives in interceptors
 
@@ -241,10 +265,47 @@ login, refresh) are mapped by `MapIdentityApi<User>` and issue bearer tokens.
 Paginated lists return the total row count in a `total-number-of-records`
 response header. Failures are always `ProblemDetails` with an `errorCode`.
 
-A background job sends next-day reminders daily at 08:00 Europe/Madrid.
+A background job sends next-day reminders daily at 08:00 clinic time
+(`Clinic:TimeZoneId`, `Europe/Madrid` by default).
 
 OpenAPI is exposed in Development at `/openapi/v1.json`. The `.http` files in
 `DientesLimpios.API/` hold ready-to-run requests for every controller.
+
+### Time contract
+
+Every instant is ISO 8601. Requests must include an offset or `Z`; responses are
+always UTC with `Z`. A time without a zone is rejected with 400 instead of being
+guessed.
+
+```http
+POST /api/v1/appointments
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{
+  "patientId": "0199a0d4-5c6e-7b1a-9f2e-3c4d5e6f7a81",
+  "dentistId": "0199a0d4-5c6e-7b1a-9f2e-3c4d5e6f7a82",
+  "officeId": "0199a0d4-5c6e-7b1a-9f2e-3c4d5e6f7a83",
+  "startDate": "2030-09-01T10:00:00+02:00",
+  "endDate": "2030-09-01T11:00:00+02:00"
+}
+```
+
+`GET /api/v1/appointments/{id}` returns the same instants in UTC:
+
+```json
+{
+  "id": "0199a0d4-5c6e-7b1a-9f2e-3c4d5e6f7a90",
+  "patient": "Jane Doe",
+  "dentist": "John Smith",
+  "office": "Main Office",
+  "startDate": "2030-09-01T08:00:00Z",
+  "endDate": "2030-09-01T09:00:00Z",
+  "appointmentStatus": "Scheduled"
+}
+```
+
+The confirmation email shows the start as 10:00, the clinic's local time.
 
 ---
 
@@ -283,6 +344,11 @@ Email options are validated at startup with
 `ValidateDataAnnotations().ValidateOnStart()`, so a missing value fails fast
 instead of at the first send.
 
+The clinic's time zone drives the reminder schedule and the times shown in emails.
+It is `Europe/Madrid` in `appsettings.json` and is validated at startup, so an
+unknown id stops the app immediately. Override it like any other setting, for
+example with the environment variable `Clinic__TimeZoneId=Atlantic/Canary`.
+
 ### 3. Create the database
 
 There are two `DbContext`s, each with its own migrations folder:
@@ -318,9 +384,9 @@ dotnet test DientesLimpios.IntegrationTests   # needs Docker running
 
 | Project | Covers |
 |---|---|
-| `DientesLimpios.Tests` | domain invariants, use-case handlers with NSubstitute mocks, `ProblemDetails` mapping, outbox serialisation |
+| `DientesLimpios.Tests` | domain invariants, use-case handlers with NSubstitute mocks, validators and the reminder window with a pinned clock, the reminder job schedule with `FakeTimeProvider`, the JSON time converter, `ProblemDetails` mapping, outbox serialisation |
 | `DientesLimpios.ArchitectureTests` | the dependency rules above, via NetArchTest |
-| `DientesLimpios.IntegrationTests` | full HTTP-to-SQL-Server round trips: booking, 409 on overlap, concurrent double booking, restricted deletes, outbox persistence, retry after a failed send, and no duplicate email on redelivery |
+| `DientesLimpios.IntegrationTests` | full HTTP-to-SQL-Server round trips: booking, 409 on overlap, concurrent double booking, restricted deletes, outbox persistence, retry after a failed send, no duplicate email on redelivery, and the time contract (offset in, `Z` out, zone-less input rejected) |
 
 Integration tests start a `mcr.microsoft.com/mssql/server:2022-latest` container,
 apply the migrations, replace SMTP with a recording fake, and swap bearer auth for
@@ -368,6 +434,11 @@ do yet.
   covering index.
 - **`SimpleMediator` has no pipeline behaviours**, so logging is repeated in every
   handler.
+- **One time zone for all offices** (`Clinic:TimeZoneId`). Offices in different
+  zones would need a per-office time zone.
+- **The reminder schedule is approximate.** The job checks the clock hourly, so it
+  fires somewhere between 08:00 and 08:59. A restart during that hour sends the
+  reminders twice, and downtime covering the whole hour skips the day.
 - **Spanish remnants** from the original codebase are still being renamed
   (`ADto`, `AgregarServicesDeX`, the `esadmin` policy).
 

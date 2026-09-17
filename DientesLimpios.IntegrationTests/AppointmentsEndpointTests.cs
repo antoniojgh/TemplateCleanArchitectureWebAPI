@@ -1,6 +1,7 @@
 ﻿using System.Linq.Expressions;
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using DientesLimpios.API.DTOs.Appointments;
 using DientesLimpios.Application.UseCases.Appointments.Queries.GetAppointmentDetail;
@@ -390,6 +391,54 @@ namespace DientesLimpios.IntegrationTests
             // Assert — the handler recognised the appointment was already confirmed.
             notifications.Confirmations.Should().ContainSingle(c => c.Id == appointmentId);
         }
+
+        [Fact]
+        public async Task Post_StartWithOffset_IsStoredAsTheUtcInstant_AndReturnedWithZ()
+        {
+            // Arrange — 10:00 at UTC+2 is 08:00 UTC.
+            var (patientId, dentistId, officeId) = await SeedCoreEntitiesAsync();
+            using var body = AppointmentJson(patientId, dentistId, officeId,
+                "2030-09-01T10:00:00+02:00", "2030-09-01T11:00:00+02:00");
+
+            // Act
+            var post = await _client.PostAsync(new Uri("/api/v1/appointments", UriKind.Relative), body);
+            post.StatusCode.Should().Be(HttpStatusCode.Created);
+            var id = await post.Content.ReadFromJsonAsync<Guid>();
+
+            var detail = await _client.GetFromJsonAsync<JsonElement>(
+                new Uri($"/api/v1/appointments/{id}", UriKind.Relative));
+
+            // Assert — the same instant, and marked as UTC.
+            detail.GetProperty("startDate").GetString().Should().Be("2030-09-01T08:00:00Z");
+            detail.GetProperty("endDate").GetString().Should().Be("2030-09-01T09:00:00Z");
+        }
+
+        [Fact]
+        public async Task Post_StartWithoutOffset_Returns400()
+        {
+            // Arrange — "10:00" with no zone is ambiguous; the API must refuse to guess.
+            var (patientId, dentistId, officeId) = await SeedCoreEntitiesAsync();
+            using var body = AppointmentJson(patientId, dentistId, officeId,
+                "2030-09-01T10:00:00", "2030-09-01T11:00:00");
+
+            // Act
+            var post = await _client.PostAsync(new Uri("/api/v1/appointments", UriKind.Relative), body);
+
+            // Assert
+            post.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        }
+
+        private static StringContent AppointmentJson(Guid patientId, Guid dentistId, Guid officeId,
+                                                     string start, string end) =>
+            new($$"""
+                {
+                  "patientId": "{{patientId}}",
+                  "dentistId": "{{dentistId}}",
+                  "officeId": "{{officeId}}",
+                  "startDate": "{{start}}",
+                  "endDate": "{{end}}"
+                }
+                """, Encoding.UTF8, "application/json");
 
 
         // ProblemDetails.Extensions values arrive as JsonElement after deserialisation.

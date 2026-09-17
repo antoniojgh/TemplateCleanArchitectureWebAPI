@@ -188,9 +188,20 @@ What this demands of new code:
 
 ### Time
 
-Non-test code never calls `DateTime.UtcNow` or `DateTime.Now`. It takes the
-injected `TimeProvider`, registered once in `ApplicationServiceRegistration`.
+**Convention: every `DateTime` inside the application is UTC.** A local clock time
+exists only where a person reads it. The convention is enforced at each boundary:
 
+| Boundary | Enforced by |
+|---|---|
+| JSON in and out | `API/Json/UtcDateTimeJsonConverter` (registered in `Program.cs`): accepts only ISO 8601 with an offset or `Z`, so a zone-less value is a 400, and always writes `Z` |
+| Query-string filters | ASP.NET Core binds offset and `Z` values to UTC (`AdjustToUniversal`); `GetAppointmentListQueryValidator` rejects zone-less ones |
+| Database | `Persistence/Converters/UtcDateTimeConverter`, applied to every `DateTime` and `DateTime?` in `DientesLimpiosDbContext.ConfigureConventions`: throws on a non-UTC write and marks every read as UTC |
+| Emails | `Infrastructure/Notifications/AppointmentDateFormatter`: the only place a stored instant becomes a clinic clock time |
+
+Reading "now":
+
+- Non-test code never calls `DateTime.UtcNow` or `DateTime.Now`. It takes the
+  injected `TimeProvider`, registered once in `ApplicationServiceRegistration`.
 - **Domain** stays free of the abstraction and receives the instant as a
   parameter (`Appointment.Create(..., nowUtc)`, `MarkConfirmationSent(nowUtc)`).
 - **Validators** read the clock inside a lambda
@@ -200,8 +211,19 @@ injected `TimeProvider`, registered once in `ApplicationServiceRegistration`.
   `Task.Delay(delay, timeProvider, ct)`. The plain overloads use the real clock,
   so `FakeTimeProvider.Advance` could never release them in a test.
 - **"Today" and "tomorrow" are days at the clinic**, not UTC days. Convert with
-  `ClinicOptions.TimeZoneId`, then back to UTC for queries: appointments are
-  stored in UTC. See `SendAppointmentRemindersHandler`.
+  `ClinicOptions.TimeZoneId`, then back to UTC for queries. See
+  `SendAppointmentRemindersHandler`.
+
+What this demands of new code:
+
+- A new `DateTime` property needs no mapping work, since the EF convention covers
+  it, but whatever sets it must produce `Kind=Utc`
+  (`timeProvider.GetUtcNow().UtcDateTime`, `TimeZoneInfo.ConvertTimeToUtc`).
+  Anything else fails at `SaveChanges`.
+- A new place that shows a time to a person converts with
+  `ClinicOptions.TimeZoneId`, as `AppointmentDateFormatter` does.
+- `DateTimeOffset` was considered and not adopted: the offset that matters is the
+  clinic's, not the caller's. Do not mix the two types.
 
 In tests, `Substitute.For<TimeProvider>()` is enough when the code only reads a
 fixed instant. Use `FakeTimeProvider` only when the code under test waits on
@@ -240,6 +262,13 @@ asked to fix one, write the failing test first.
   restart during that hour sends the reminders twice, and downtime covering the
   whole hour skips the day. A fix needs persisted "last run" state;
   `AppointmentReminderJobTests` already drives the schedule with `FakeTimeProvider`.
+- All offices share one time zone (`ClinicOptions.TimeZoneId`). Per-office zones
+  would need `Office.TimeZoneId`, reminders computed per office, and emails
+  formatted in each office's zone.
+- `Program.cs` catches every exception and logs "Web API terminated
+  unexpectedly!", including the `HostAbortedException` that `dotnet ef` uses to
+  stop the host after reading the model. That fatal line during `dotnet ef`
+  commands is noise, not a failure.
 - `SimpleMediator` still dispatches requests by reflection (`GetMethod` +
   `Invoke`). `DomainEventDispatcher` no longer does: it uses a cached generic
   wrapper, which is the technique to copy when reworking the mediator.

@@ -1,16 +1,16 @@
-﻿using System.Globalization;
-using System.Net;
+﻿using System.Net;
 using System.Net.Mail;
+using DientesLimpios.Application.Configuration;
 using DientesLimpios.Application.Interfaces.Notifications;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace DientesLimpios.Infrastructure.Notifications
 {
-    public class EmailService(IOptions<EmailOptions> options, ILogger<EmailService> logger) : INotificationService
+    public class EmailService(IOptions<EmailOptions> options, IOptions<ClinicOptions> clinicOptions, ILogger<EmailService> logger) : INotificationService
     {
         private readonly EmailOptions _options = options.Value;
-
+        private readonly TimeZoneInfo _clinicTimeZone = TimeZoneInfo.FindSystemTimeZoneById(clinicOptions.Value.TimeZoneId);
         public async Task SendAppointmentConfirmation(AppointmentConfirmationDTO appointment, CancellationToken cancellationToken)
         {
             var subject = "Appointment Confirmation - Dientes Limpios";
@@ -18,7 +18,7 @@ namespace DientesLimpios.Infrastructure.Notifications
             var body = $"""
             Dear {appointment.Patient},
 
-            Your appointment with Dr. {appointment.Dentist} has been scheduled for {appointment.Date.ToString("f", new CultureInfo("en-GB"))} at the {appointment.Office} office.
+            Your appointment with Dr. {appointment.Dentist} has been scheduled for {AppointmentDateFormatter.ToClinicTime(appointment.Date, _clinicTimeZone)} at the {appointment.Office} office.
 
             We look forward to seeing you!
 
@@ -35,7 +35,7 @@ namespace DientesLimpios.Infrastructure.Notifications
             var body = $"""
             Dear {appointment.Patient},
 
-            This is a reminder that you have an appointment with Dr. {appointment.Dentist} on {appointment.Date.ToString("f", new CultureInfo("en-GB"))} at the {appointment.Office} office.
+            This is a reminder that you have an appointment with Dr. {appointment.Dentist} on {AppointmentDateFormatter.ToClinicTime(appointment.Date, _clinicTimeZone)} at the {appointment.Office} office.
 
             We look forward to seeing you!
 
