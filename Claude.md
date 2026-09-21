@@ -141,6 +141,13 @@ Responses are RFC 9457 `ProblemDetails` with an `errorCode` extension.
 - Aggregates carry a `RowVersion` optimistic-concurrency token (configured for
   every `AggregateRoot` in `DientesLimpiosDbContext.OnModelCreating`), so a second
   writer working from a stale copy is refused instead of overwriting the first.
+- Audit fields (`CreatedBy`, `CreatedDate`, `LastModifiedBy`, `LastModifiedDate`)
+  come from `IAuditable`: readable on the aggregate, with `private` setters and
+  no setters on the interface, so neither an aggregate reference nor a cast can
+  forge the trail. `AuditableEntitiesInterceptor` writes them through the change
+  tracker (`entry.Property(nameof(IAuditable.CreatedDate)).CurrentValue = ...`),
+  which reaches a private setter — do not reopen them to public "so the
+  interceptor can set them". Nothing else, in any layer, writes them.
 
 ### Use cases
 
