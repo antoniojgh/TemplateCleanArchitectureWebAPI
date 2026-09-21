@@ -100,6 +100,13 @@ namespace DientesLimpios.Domain.Errors
                 "Email.InvalidFormat",
                 "The email format is not valid.");
         }
+
+        public static class Concurrency
+        {
+            public static readonly Error Conflict = new(
+                "Concurrency.Conflict",
+                "The record was modified by someone else. Reload it and try again.");
+        }
     }
 
 }

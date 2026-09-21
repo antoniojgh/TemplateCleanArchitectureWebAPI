@@ -24,7 +24,9 @@ namespace DientesLimpios.Application.UseCases.Appointments.Commands.CancelAppoin
             if (cancelResult.IsFailure)
                 return cancelResult;
 
-            await db.SaveChangesAsync(cancellationToken);
+            var saveResult = await db.SaveChangesAsResult(cancellationToken);
+            if (saveResult.IsFailure)
+                return saveResult;
 
             logger.LogInformation("Appointment cancelled successfully with ID: {AppointmentId}", request.Id);
 

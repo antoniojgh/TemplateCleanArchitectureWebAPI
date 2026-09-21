@@ -138,6 +138,9 @@ Responses are RFC 9457 `ProblemDetails` with an `errorCode` extension.
 - Behaviour lives on the aggregate (`Cancel()`, `Complete()`), returning
   `Result`. Never mutate state from a handler.
 - Domain events are raised inside the aggregate via `RaiseDomainEvent`.
+- Aggregates carry a `RowVersion` optimistic-concurrency token (configured for
+  every `AggregateRoot` in `DientesLimpiosDbContext.OnModelCreating`), so a second
+  writer working from a stale copy is refused instead of overwriting the first.
 
 ### Use cases
 
@@ -163,6 +166,11 @@ Cross-cutting persistence behaviour goes in `SaveChangesInterceptor`s
 `Persistence/Configurations/*Config.cs`, applied by
 `ApplyConfigurationsFromAssembly`.
 
+Command handlers persist with `db.SaveChangesAsResult(ct)`, which turns a
+`DbUpdateConcurrencyException` into `Result.Failure(DomainErrors.Concurrency.Conflict)`
+— a 409 by the error-code suffix convention — instead of letting it escape as a
+500. When a mediator pipeline exists, that `catch` moves there and the helper goes.
+
 ### Domain events and the outbox
 
 Aggregates raise events with `RaiseDomainEvent`. `InsertOutboxMessagesInterceptor`
@@ -182,6 +190,12 @@ What this demands of new code:
   setter (`init`, not `get`-only) or it comes back with a fresh value.
 - `OutboxSerializer` resolves an event by its short type name against the Domain
   assembly; two events with the same name in different namespaces fail at startup.
+- Delivery markers (`Appointment.ConfirmationSentAtUtc`) are written with
+  `ExecuteUpdateAsync`, bypassing both the concurrency token and the aggregate.
+  They are not part of the state machine, and a token veto would mean the email
+  gets sent again on the retry. This is the one sanctioned exception to "never
+  mutate state from a handler"; `Appointment.MarkConfirmationSent` stays as the
+  in-memory invariant and has no production caller.
 - Events take `OccurredOnUtc` as a constructor parameter, supplied from the
   aggregate method's `nowUtc` argument (see `Appointment.Create`). Domain never
   reads the clock.
@@ -253,9 +267,15 @@ asked to fix one, write the failing test first.
   projecting straight to DTOs with `AsNoTracking().Select(...)`.
 - Validation is duplicated across API DataAnnotations (`API/DTOs/**`),
   FluentValidation validators and the domain factories, with divergent rules.
-- No optimistic-concurrency tokens (`rowversion`) on any aggregate. Indexes are
-  the EF Core defaults for foreign keys plus the filtered index on
+- Indexes are the EF Core defaults for foreign keys plus the filtered index on
   `OutboxMessages`; the appointment-overlap query has no covering index.
+- The delete handlers (`DeleteDentist`, `DeleteOffice`, `DeletePatient`) still
+  call `db.SaveChangesAsync` directly, so a concurrency conflict on a delete
+  surfaces as a 500 rather than a 409. The `Create*` handlers do the same, which
+  is harmless: an insert cannot conflict.
+- The concurrency token is never exposed to clients. A client that reads, waits
+  and writes back still wins, because the handler reloads inside the request.
+  Closing that needs the version as an `ETag` with `If-Match`.
 - `AppointmentReminderJob` checks the clinic clock once an hour and sends when
   the hour is 8. While the process stays up it fires once a day, but at an
   imprecise minute (anywhere from 08:00 to 08:59, depending on start time). A

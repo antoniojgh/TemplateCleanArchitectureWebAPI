@@ -12,6 +12,10 @@
         public string? LastModifiedBy { get; set; }
         public DateTime? LastModifiedDate { get; set; }
 
+        // Optimistic concurrency token. SQL Server maintains it; the value is only ever
+        // read here. It is a plain byte[], so Domain still references nothing.
+        public byte[] RowVersion { get; private set; } = [];
+
         // Domain events
         private readonly List<IDomainEvent> _domainEvents = new();
 

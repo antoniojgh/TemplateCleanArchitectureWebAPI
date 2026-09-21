@@ -22,7 +22,9 @@ namespace DientesLimpios.Application.UseCases.Offices.Commands.UpdateOffice
             if (updateResult.IsFailure)
                 return updateResult;
 
-            await db.SaveChangesAsync(cancellationToken);
+            var saveResult = await db.SaveChangesAsResult(cancellationToken);
+            if (saveResult.IsFailure)
+                return saveResult;
 
             logger.LogInformation("Office updated successfully with ID: {OfficeId}", request.Id);
 

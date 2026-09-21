@@ -18,7 +18,13 @@ namespace DientesLimpios.IntegrationTests
 
         public void FailNextConfirmationFor(Guid appointmentId) => _failOnce.TryAdd(appointmentId, 0);
 
-        public Task SendAppointmentConfirmation(AppointmentConfirmationDTO appointment, CancellationToken cancellationToken)
+        // Lets a test simulate someone editing the appointment while the email is in flight.
+        private Func<AppointmentConfirmationDTO, Task>? _beforeConfirmation;
+
+        public void BeforeNextConfirmation(Func<AppointmentConfirmationDTO, Task> hook) =>
+            Interlocked.Exchange(ref _beforeConfirmation, hook);
+
+        public async Task SendAppointmentConfirmation(AppointmentConfirmationDTO appointment, CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(appointment);
 
@@ -26,8 +32,11 @@ namespace DientesLimpios.IntegrationTests
             if (_failOnce.TryRemove(appointment.Id, out _))
                 throw new InvalidOperationException("Simulated SMTP failure.");
 
+            var hook = Interlocked.Exchange(ref _beforeConfirmation, null);
+            if (hook is not null)
+                await hook(appointment);
+
             _confirmations.Add(appointment);
-            return Task.CompletedTask;
         }
 
         public Task SendAppointmentReminder(AppointmentReminderDTO appointment, CancellationToken cancellationToken) => Task.CompletedTask;

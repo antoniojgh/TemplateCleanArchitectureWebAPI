@@ -26,7 +26,9 @@ namespace DientesLimpios.Application.UseCases.Patients.Commands.UpdatePatient
             if (updateEmailResult.IsFailure)
                 return updateEmailResult;
 
-            await db.SaveChangesAsync(cancellationToken);
+            var saveResult = await db.SaveChangesAsResult(cancellationToken);
+            if (saveResult.IsFailure)
+                return saveResult;
 
             logger.LogInformation("Patient updated successfully with ID: {PatientId}", request.Id);
 

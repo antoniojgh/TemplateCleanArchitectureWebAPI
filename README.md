@@ -161,7 +161,7 @@ an email and recording the send, because SMTP has no idempotency key.
 The request never waits for SMTP, and a failed email is retried rather than lost
 in a log line.
 
-### Concurrency: never double-book a dentist
+### Concurrency: no double bookings, no silent overwrites
 
 Checking "does this slot overlap?" and then inserting is a
 time-of-check/time-of-use race — two simultaneous requests both see a free slot.
@@ -172,6 +172,12 @@ either.
 application lock keyed by dentist (`sp_getapplock`) before the check, so bookings
 for *different* dentists never block each other. An integration test fires two
 overlapping requests concurrently and asserts exactly one 201 and one 409.
+
+Editing is guarded separately. Every aggregate carries a `rowversion` token, so a
+second writer starting from a stale copy is refused rather than overwriting the
+first — two staff members cancelling and completing the same appointment no longer
+end in "last write wins". The conflict comes back as a 409 with
+`errorCode: "Concurrency.Conflict"`, not a 500.
 
 ### Appointments survive deletes
 
@@ -430,8 +436,11 @@ do yet.
   direction is commands through repositories, queries projecting straight to DTOs.
 - **Validation is duplicated** across API DataAnnotations, FluentValidation and
   the domain factories, with rules that do not always agree.
-- **No optimistic-concurrency tokens**, and the appointment-overlap query has no
-  covering index.
+- **The concurrency token is not exposed to clients.** Aggregates carry a
+  `rowversion`, but a client that reads, waits and writes back still wins, because
+  the handler reloads inside the request. Closing that needs an `ETag` with
+  `If-Match`.
+- **The appointment-overlap query has no covering index.**
 - **`SimpleMediator` has no pipeline behaviours**, so logging is repeated in every
   handler.
 - **One time zone for all offices** (`Clinic:TimeZoneId`). Offices in different

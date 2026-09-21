@@ -6,6 +6,7 @@ using System.Text.Json;
 using DientesLimpios.API.DTOs.Appointments;
 using DientesLimpios.Application.UseCases.Appointments.Queries.GetAppointmentDetail;
 using DientesLimpios.Domain.Entities;
+using DientesLimpios.Domain.Enums;
 using DientesLimpios.Domain.Events;
 using DientesLimpios.Persistence;
 using DientesLimpios.Persistence.Outbox;
@@ -427,6 +428,62 @@ namespace DientesLimpios.IntegrationTests
             // Assert
             post.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         }
+
+        [Fact]
+        public async Task Outbox_AppointmentChangedWhileSending_RecordsTheSendAndDoesNotResend()
+        {
+            // Arrange — drain earlier messages, then book an appointment.
+            await ProcessOutboxAsync();
+
+            var (patientId, dentistId, officeId) = await SeedCoreEntitiesAsync();
+            var start = DateTime.UtcNow.AddDays(1);
+
+            var post = await _client.PostAsJsonAsync("/api/v1/appointments", new CreateAppointmentDTO
+            {
+                PatientId = patientId,
+                DentistId = dentistId,
+                OfficeId = officeId,
+                StartDate = start,
+                EndDate = start.AddHours(1)
+            });
+
+            post.StatusCode.Should().Be(HttpStatusCode.Created);
+            var appointmentId = await post.Content.ReadFromJsonAsync<Guid>();
+
+            var notifications = factory.Services.GetRequiredService<RecordingNotificationService>();
+
+            // Someone cancels the appointment while the confirmation is being sent, which
+            // changes the row version the handler loaded.
+            notifications.BeforeNextConfirmation(async _ =>
+            {
+                using var scope = factory.Services.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<DientesLimpiosDbContext>();
+
+                var appointment = await db.Appointments.FirstAsync(a => a.Id == appointmentId);
+                appointment.Cancel().IsSuccess.Should().BeTrue();
+                await db.SaveChangesAsync();
+            });
+
+            // Act
+            await ProcessOutboxOnceAsync();
+
+            // Assert — the send is recorded despite the concurrent change...
+            (await GetOutboxMessageAsync(appointmentId)).ProcessedOnUtc.Should().NotBeNull();
+
+            using (var scope = factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<DientesLimpiosDbContext>();
+                var stored = await db.Appointments.FirstAsync(a => a.Id == appointmentId);
+
+                stored.ConfirmationSentAtUtc.Should().NotBeNull();
+                stored.Status.Should().Be(AppointmentStatus.Cancelled);   // the other writer's change survived
+            }
+
+            // ...and no retry ever sends a second email.
+            await ProcessOutboxOnceAsync();
+            notifications.Confirmations.Should().ContainSingle(c => c.Id == appointmentId);
+        }
+
 
         private static StringContent AppointmentJson(Guid patientId, Guid dentistId, Guid officeId,
                                                      string start, string end) =>

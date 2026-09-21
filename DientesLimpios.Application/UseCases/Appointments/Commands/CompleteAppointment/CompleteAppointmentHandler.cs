@@ -22,7 +22,9 @@ namespace DientesLimpios.Application.UseCases.Appointments.Commands.CompleteAppo
             if (completeResult.IsFailure)
                 return completeResult;
 
-            await db.SaveChangesAsync(cancellationToken);
+            var saveResult = await db.SaveChangesAsResult(cancellationToken);
+            if (saveResult.IsFailure)
+                return saveResult;
 
             logger.LogInformation("Appointment completed successfully with ID: {AppointmentId}", request.Id);
 

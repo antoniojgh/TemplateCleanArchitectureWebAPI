@@ -4,6 +4,7 @@ using DientesLimpios.Application.Interfaces.Repositories;
 using DientesLimpios.Application.UseCases.Appointments.Commands.CreateAppointment;
 using DientesLimpios.Application.Utilities.Mediator;
 using DientesLimpios.Domain.Events;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace DientesLimpios.Application.UseCases.Appointments.Events
@@ -32,7 +33,7 @@ namespace DientesLimpios.Application.UseCases.Appointments.Events
                 return;
             }
 
-            // The outbox delivers at least once, so this check has to come before the se
+            // The outbox delivers at least once, so this check has to come before the send.
             if (appointment.ConfirmationSentAtUtc is not null)
             {
                 logger.LogInformation(
@@ -42,11 +43,19 @@ namespace DientesLimpios.Application.UseCases.Appointments.Events
             }
 
             var dto = appointment.ADto();
+            var sentAtUtc = timeProvider.GetUtcNow().UtcDateTime;
 
             await notificationService.SendAppointmentConfirmation(dto, cancellationToken);
 
-            appointment.MarkConfirmationSent(timeProvider.GetUtcNow().UtcDateTime);
-            await db.SaveChangesAsync(cancellationToken);
+            // The email has been sent, so the marker must land even if the appointment changed
+            // meanwhile. This writes the one column directly: it is a delivery marker, not part
+            // of the state machine that Cancel/Complete guard, so the concurrency token must not
+            // veto it. The WHERE guard keeps it idempotent when two processors race.
+            await db.Appointments
+                    .Where(a => a.Id == appointment.Id && a.ConfirmationSentAtUtc == null)
+                    .ExecuteUpdateAsync(
+                        s => s.SetProperty(a => a.ConfirmationSentAtUtc, sentAtUtc),
+                        cancellationToken);
 
             logger.LogInformation(
                 "Confirmation email sent to {Email} for appointment {AppointmentId}.",
