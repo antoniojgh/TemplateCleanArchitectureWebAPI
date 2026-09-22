@@ -1,6 +1,6 @@
 ﻿using DientesLimpios.Domain.Enums;
 
-namespace DientesLimpios.Application.Interfaces.Repositories.Models
+namespace DientesLimpios.Application.UseCases.Appointments.DTOs
 {
     public class AppointmentFilterDTO
     {

@@ -77,12 +77,16 @@ scanning), so adding a use case requires no DI registration.
 
 ### Hand-written mapping instead of AutoMapper
 
-Each use-case folder owns a `MapperExtensions` with explicit
-`Appointment → AppointmentDetailDTO` methods.
+The dentist, office and patient queries map a loaded entity with an explicit
+`MapperExtensions` in the use-case folder. The appointment queries skip that step
+altogether: the handler projects from the `DbContext` straight into its DTO, so
+the `select new` *is* the mapping.
 
-**Why:** mapping mistakes become compile errors instead of runtime surprises, the
-projection is visible where it is used, and queries can project straight into a
-DTO without loading whole entities.
+**Why:** mapping mistakes become compile errors instead of runtime surprises, and
+the projection is visible where it is used. Where a DTO needs data from more than
+one aggregate — an appointment plus the patient, dentist and office names —
+projecting in the query is also the cheaper path: three joined columns are read
+instead of three whole aggregates being materialised to copy one string from each.
 
 ### Result pattern instead of exceptions for business outcomes
 
@@ -129,6 +133,11 @@ returning `Result<T>`, keep private setters, and expose behaviour — `Cancel()`
 `TimeInterval`) are `sealed record`s with their own `Create` validation, mapped
 with EF Core `ComplexProperty`. Ids are `Guid.CreateVersion7()`, which keeps
 primary keys sequential and index-friendly.
+
+One aggregate never holds a reference to another: an `Appointment` carries
+`PatientId`, `DentistId` and `OfficeId` and no navigation properties. Reads join
+on those ids, so nothing tempts a handler to reach across an aggregate boundary
+and nothing depends on a caller having remembered an `Include`.
 
 **Why:** an `Appointment` that exists is always valid. No path produces one whose
 end precedes its start, so handlers never re-check invariants.
@@ -181,7 +190,9 @@ end in "last write wins". The conflict comes back as a 409 with
 
 ### Appointments survive deletes
 
-All three foreign keys use `DeleteBehavior.Restrict`. Deleting a dentist who has
+All three foreign keys use `DeleteBehavior.Restrict`, configured from the
+appointment side without navigation properties
+(`HasOne<Patient>().WithMany().HasForeignKey(a => a.PatientId)`). Deleting a dentist who has
 history returns 409 with an `errorCode`, and the database refuses the delete as a
 backstop. Appointments are medical and financial history.
 
@@ -431,9 +442,10 @@ do yet.
 - **Email delivery is at-least-once**, and a message that fails five times stays
   in `OutboxMessages` with its error. There is no retry backoff, dead-letter view
   or alerting.
-- **Data access is inconsistent**: some handlers use `IApplicationDbContext`
-  directly, others go through repositories, and a few use both. The intended
-  direction is commands through repositories, queries projecting straight to DTOs.
+- **Data access is still mixed.** The appointment use cases now follow the
+  intended split — commands load the aggregate through a repository, queries
+  project straight to DTOs — but `CreateAppointmentHandler` uses both styles, and
+  the dentist, office and patient queries still load entities and map them.
 - **Validation is duplicated** across API DataAnnotations, FluentValidation and
   the domain factories, with rules that do not always agree.
 - **The concurrency token is not exposed to clients.** Aggregates carry a

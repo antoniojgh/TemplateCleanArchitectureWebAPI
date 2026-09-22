@@ -15,9 +15,6 @@ namespace DientesLimpios.Domain.Entities
         public AppointmentStatus Status { get; private set; }
         public TimeInterval TimeInterval { get; private set; } = null!;
         public DateTime? ConfirmationSentAtUtc { get; private set; }
-        public Patient? Patient { get; private set; }
-        public Dentist? Dentist { get; private set; }
-        public Office? Office { get; private set; }
 
         private Appointment() { }   // EF Core
 

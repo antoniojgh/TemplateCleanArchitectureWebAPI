@@ -1,16 +1,18 @@
 using DientesLimpios.Application.Configuration;
 using DientesLimpios.Application.Interfaces.Notifications;
-using DientesLimpios.Application.Interfaces.Repositories;
-using DientesLimpios.Application.Interfaces.Repositories.Models;
+using DientesLimpios.Application.Interfaces.Persistence;
+using DientesLimpios.Application.UseCases.Appointments.DTOs;
+using DientesLimpios.Application.UseCases.Appointments.Utilities;
 using DientesLimpios.Application.Utilities.Mediator;
 using DientesLimpios.Domain.Common.ResultPattern;
 using DientesLimpios.Domain.Enums;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace DientesLimpios.Application.UseCases.Appointments.Commands.SendAppointmentReminders
 {
-    public class SendAppointmentRemindersHandler(IAppointmentRepository repository,
+    public class SendAppointmentRemindersHandler(IApplicationDbContext db,
                 INotificationService notificationService, TimeProvider timeProvider,
                 IOptions<ClinicOptions> clinicOptions,
                 ILogger<SendAppointmentRemindersHandler> logger) : IRequestHandler<SendAppointmentRemindersCommand, Result>
@@ -36,16 +38,25 @@ namespace DientesLimpios.Application.UseCases.Appointments.Commands.SendAppointm
                 AppointmentStatus = AppointmentStatus.Scheduled
             };
 
-            var appointments = await repository.GetFiltered(filter, cancellationToken);
+            var reminders = await (
+                from a in db.Appointments.ApplyFilter(filter).OrderBy(a => a.TimeInterval.Start)
+                join p in db.Patients on a.PatientId equals p.Id
+                join d in db.Dentists on a.DentistId equals d.Id
+                join o in db.Offices on a.OfficeId equals o.Id
+                select new AppointmentReminderDTO
+                {
+                    Id = a.Id,
+                    Date = a.TimeInterval.Start,
+                    Patient = p.Name,
+                    PatientEmail = p.Email.Value,
+                    Dentist = d.Name,
+                    Office = o.Name
+                }).ToListAsync(cancellationToken);
 
-            foreach (var appointment in appointments)
-            {
-                var appointmentDTO = appointment.ADto();
-                await notificationService.SendAppointmentReminder(appointmentDTO, cancellationToken);
-            }
+            foreach (var reminder in reminders)
+                await notificationService.SendAppointmentReminder(reminder, cancellationToken);
 
-            logger.LogInformation("Appointment reminders sent successfully for {AppointmentCount} appointments", appointments.Count());
-
+            logger.LogInformation("Appointment reminders sent successfully for {AppointmentCount} appointments", reminders.Count);
             return Result.Success();
         }
     }

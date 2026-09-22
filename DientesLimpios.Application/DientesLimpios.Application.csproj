@@ -16,4 +16,8 @@
     <ProjectReference Include="..\DientesLimpios.Domain\DientesLimpios.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Interfaces\Repositories\Models\" />
+  </ItemGroup>
+
 </Project>

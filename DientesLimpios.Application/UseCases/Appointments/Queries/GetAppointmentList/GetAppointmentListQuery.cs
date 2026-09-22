@@ -1,4 +1,4 @@
-﻿using DientesLimpios.Application.Interfaces.Repositories.Models;
+﻿using DientesLimpios.Application.UseCases.Appointments.DTOs;
 using DientesLimpios.Application.Utilities.Mediator;
 using DientesLimpios.Domain.Common.ResultPattern;
 

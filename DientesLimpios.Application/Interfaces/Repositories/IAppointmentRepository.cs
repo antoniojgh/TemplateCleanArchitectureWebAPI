@@ -1,5 +1,4 @@
-﻿using DientesLimpios.Application.Interfaces.Repositories.Models;
-using DientesLimpios.Domain.Common.ResultPattern;
+﻿using DientesLimpios.Domain.Common.ResultPattern;
 using DientesLimpios.Domain.Entities;
 
 namespace DientesLimpios.Application.Interfaces.Repositories
@@ -15,6 +14,5 @@ namespace DientesLimpios.Application.Interfaces.Repositories
 
         // Gets an appointment by its ID, including related entities, and replaces the base method
         Task<Appointment?> GetById(Guid id, CancellationToken cancellationToken = default);
-        Task<IEnumerable<Appointment>> GetFiltered(AppointmentFilterDTO appointmentFilterDTO, CancellationToken cancellationToken = default);
     }
 }

@@ -148,6 +148,12 @@ Responses are RFC 9457 `ProblemDetails` with an `errorCode` extension.
   tracker (`entry.Property(nameof(IAuditable.CreatedDate)).CurrentValue = ...`),
   which reaches a private setter — do not reopen them to public "so the
   interceptor can set them". Nothing else, in any layer, writes them.
+- Aggregates reference other aggregates **by id only** — `Appointment` holds
+  `PatientId`, `DentistId` and `OfficeId` and no navigation properties. EF learns
+  the relationships from `AppointmentConfig` through the id-only overload
+  (`builder.HasOne<Patient>().WithMany().HasForeignKey(a => a.PatientId)`), which
+  keeps the foreign keys and their `Restrict` behaviour without putting another
+  aggregate on the entity. Do not add a navigation to serve a DTO; join instead.
 
 ### Use cases
 
@@ -156,6 +162,36 @@ containing the command/query, its handler, its validator, and its DTO.
 Handlers are primary-constructor classes implementing
 `IRequestHandler<TRequest, TResponse>`, discovered by Scrutor assembly
 scanning — no manual DI registration needed.
+
+### Read side (appointments)
+
+An appointment read never loads the aggregate to copy a name off a related one.
+The handler takes `IApplicationDbContext` and projects with joins on the id
+columns straight into its DTO, so three strings cost three joined columns instead
+of three materialised aggregates:
+
+```csharp
+from a in db.Appointments.ApplyFilter(request).OrderBy(a => a.TimeInterval.Start)
+join p in db.Patients on a.PatientId equals p.Id
+join d in db.Dentists on a.DentistId equals d.Id
+join o in db.Offices  on a.OfficeId  equals o.Id
+select new AppointmentListDTO { /* … */ Patient = p.Name, Dentist = d.Name, Office = o.Name }
+```
+
+- There is no `MapperExtensions` under `UseCases/Appointments/` any more: the
+  `select new` **is** the mapping. `AppointmentCreatedEmailHandler` and
+  `SendAppointmentRemindersHandler` build their notification DTOs the same way,
+  which is why neither needs the repository.
+- The filter lives once, in
+  `UseCases/Appointments/Utilities/AppointmentQueryExtensions.ApplyFilter`, shared
+  by `GetAppointmentListHandler` and `SendAppointmentRemindersHandler`. It returns
+  `IQueryable` and never orders or materialises — each caller adds its own
+  `OrderBy` and projection. Forgetting the `OrderBy` is the easy mistake.
+- Inner joins are correct here because the foreign keys are non-nullable and
+  `Restrict`ed, so a parent row cannot be missing.
+- Commands are the other half of the rule: they load the tracked aggregate through
+  `IAppointmentRepository.GetById` (no `Include`, no `AsNoTracking` — both handlers
+  mutate and save) and change it through its own methods.
 
 ### Mediator
 
@@ -267,9 +303,12 @@ asked to fix one, write the failing test first.
 
 **Structural**
 
-- Data access is inconsistent: most handlers use `IApplicationDbContext`
-  directly, the appointment use cases go through `IAppointmentRepository`, and
-  `CreateAppointmentHandler` and `AppointmentCreatedEmailHandler` use both.
+- Data access is still mixed, but less so: the appointment read paths are all
+  projections and the appointment commands load the aggregate through
+  `IAppointmentRepository`, which is the intended split. What remains is
+  `CreateAppointmentHandler`, which uses both (existence checks on
+  `IApplicationDbContext`, the insert through the repository), and the dentist,
+  office and patient queries, which still load entities and map them with `ADto`.
   Preferred direction: commands through repositories/aggregates, queries
   projecting straight to DTOs with `AsNoTracking().Select(...)`.
 - Validation is duplicated across API DataAnnotations (`API/DTOs/**`),
@@ -324,7 +363,9 @@ These Spanish remnants exist. Do not add more; renaming them is welcome when
 you are already editing the file, as an explicit, separate change:
 
 `Paginar` → `Paginate` (`Persistence/Utilities/IQueryableExtensions.cs` and its
-two callers) · `ADto` → projection or `ToDto` (20 sites) ·
+two callers) · `ADto` → projection or `ToDto` (12 sites, all in the dentist,
+office and patient queries — the four appointment mappers were replaced by
+projections, not renamed) ·
 `AgregarServicesDeX` → `AddXServices` (8 sites) · policy `"esadmin"` → `"Admin"`
 (`Program.cs`, `IdentityServiceRegistration`, `TestAuthHandler`) ·
 `"Validacion.General"` → `"Validation.General"` (`ValidationError`) ·

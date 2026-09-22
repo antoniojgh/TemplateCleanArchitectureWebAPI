@@ -1,9 +1,8 @@
 ﻿using System.Data;
-using DientesLimpios.Domain.Common.ResultPattern;
-using DientesLimpios.Domain.Errors;
 using DientesLimpios.Application.Interfaces.Repositories;
-using DientesLimpios.Application.Interfaces.Repositories.Models;
+using DientesLimpios.Domain.Common.ResultPattern;
 using DientesLimpios.Domain.Entities;
+using DientesLimpios.Domain.Errors;
 using Microsoft.EntityFrameworkCore;
 
 namespace DientesLimpios.Persistence.Repositories
@@ -63,58 +62,9 @@ namespace DientesLimpios.Persistence.Repositories
 
             return Result.Success(appointmentResult.Value.Id);
         }
-
-        public async Task<IEnumerable<Appointment>> GetFiltered(AppointmentFilterDTO appointmentFilterDTO, CancellationToken cancellationToken = default)
-        {
-            var queryable = context.Appointments
-                                .Include(x => x.Patient)
-                                .Include(x => x.Dentist)
-                                .Include(x => x.Office)
-                                .AsQueryable();
-
-            if (appointmentFilterDTO.OfficeId is not null)
-            {
-                queryable = queryable.Where(x => x.OfficeId == appointmentFilterDTO.OfficeId);
-            }
-
-            if (appointmentFilterDTO.DentistId is not null)
-            {
-                queryable = queryable.Where(x => x.DentistId == appointmentFilterDTO.DentistId);
-            }
-
-            if (appointmentFilterDTO.PatientId is not null)
-            {
-                queryable = queryable.Where(x => x.PatientId == appointmentFilterDTO.PatientId);
-            }
-
-            if (appointmentFilterDTO.AppointmentStatus is not null)
-            {
-                queryable = queryable.Where(x => x.Status == appointmentFilterDTO.AppointmentStatus);
-            }
-
-            if (appointmentFilterDTO.StartDate.HasValue)
-            {
-                queryable = queryable.Where(x => x.TimeInterval.Start >= appointmentFilterDTO.StartDate.Value);
-            }
-
-            if (appointmentFilterDTO.EndDate.HasValue)
-            {
-                queryable = queryable.Where(x => x.TimeInterval.End < appointmentFilterDTO.EndDate.Value);
-            }
-
-            return await queryable
-                .OrderBy(x => x.TimeInterval.Start)
-                .ToListAsync(cancellationToken);
-
-        }
-
         public async Task<Appointment?> GetById(Guid id, CancellationToken cancellationToken = default)
         {
-            return await context.Appointments
-                .Include(x => x.Patient)
-                .Include(x => x.Dentist)
-                .Include(x => x.Office)
-                .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+            return await context.Appointments.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         }
 
     }
