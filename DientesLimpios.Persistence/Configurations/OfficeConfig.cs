@@ -9,7 +9,7 @@ namespace DientesLimpios.Persistence.Configurations
         public void Configure(EntityTypeBuilder<Office> builder)
         {
             builder.Property(prop => prop.Name)
-                .HasMaxLength(150)
+                .HasMaxLength(Office.NameMaxLength)
                 .IsRequired();
         }
     }

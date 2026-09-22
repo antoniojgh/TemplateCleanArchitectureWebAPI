@@ -7,6 +7,7 @@ namespace DientesLimpios.Domain.Entities
 {
     public class Patient : AggregateRoot 
     {
+        public const int NameMaxLength = 250;
         public string Name { get; private set; } = null!;
         public Email Email { get; private set; } = null!;
 
@@ -23,11 +24,14 @@ namespace DientesLimpios.Domain.Entities
             if (string.IsNullOrWhiteSpace(name))
                 return Result.Failure<Patient>(DomainErrors.Patient.NameRequired);
 
+            if (name.Trim().Length > NameMaxLength)
+                return Result.Failure<Patient>(DomainErrors.Patient.NameTooLong);
+
             var emailResult = Email.Create(email);
             if (emailResult.IsFailure)
                 return Result.Failure<Patient>(emailResult.Error);
 
-            return Result.Success(new Patient(name, emailResult.Value));
+            return Result.Success(new Patient(name.Trim(), emailResult.Value));
         }
 
         public Result UpdateName(string name)
@@ -35,7 +39,10 @@ namespace DientesLimpios.Domain.Entities
             if (string.IsNullOrWhiteSpace(name))
                 return Result.Failure(DomainErrors.Patient.NameRequired);
 
-            Name = name;
+            if (name.Trim().Length > NameMaxLength)
+                return Result.Failure(DomainErrors.Patient.NameTooLong);
+
+            Name = name.Trim();
             return Result.Success();
         }
 

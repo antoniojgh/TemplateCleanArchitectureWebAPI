@@ -6,6 +6,7 @@ namespace DientesLimpios.Domain.Entities
 {
     public class Office : AggregateRoot
     {
+        public const int NameMaxLength = 150;
         public string Name { get; private set; } = null!;
 
         private Office() { }   // EF Core
@@ -20,7 +21,10 @@ namespace DientesLimpios.Domain.Entities
             if (string.IsNullOrWhiteSpace(name))
                 return Result.Failure<Office>(DomainErrors.Office.NameRequired);
 
-            return Result.Success(new Office(name));
+            if (name.Trim().Length > NameMaxLength)
+                return Result.Failure<Office>(DomainErrors.Office.NameTooLong);
+
+            return Result.Success(new Office(name.Trim()));
         }
 
         public Result UpdateName(string name)
@@ -28,7 +32,10 @@ namespace DientesLimpios.Domain.Entities
             if (string.IsNullOrWhiteSpace(name))
                 return Result.Failure(DomainErrors.Office.NameRequired);
 
-            Name = name;
+            if (name.Trim().Length > NameMaxLength)
+                return Result.Failure(DomainErrors.Office.NameTooLong);
+
+            Name = name.Trim();
             return Result.Success();
         }
 

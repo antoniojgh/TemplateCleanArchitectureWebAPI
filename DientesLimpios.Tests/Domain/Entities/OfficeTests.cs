@@ -35,5 +35,14 @@ namespace DientesLimpios.Tests.Domain.Entities
             office.Name.Should().Be("Office Central");
             office.Id.Should().NotBeEmpty();
         }
+
+        [Fact]
+        public void Create_NameLongerThanMaxLength_ReturnsFailureNameTooLong()
+        {
+            var result = Office.Create(new string('a', Office.NameMaxLength + 1));
+
+            result.IsFailure.Should().BeTrue();
+            result.Error.Should().Be(DomainErrors.Office.NameTooLong);
+        }
     }
 }

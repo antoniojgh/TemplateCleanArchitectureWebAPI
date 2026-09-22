@@ -1,14 +1,15 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using DientesLimpios.Domain.Entities;
 
 namespace DientesLimpios.API.DTOs.Dentists
 {
     public class UpdateDentistDTO
     {
         [Required]
-        [StringLength(250)]
+        [StringLength(Dentist.NameMaxLength)]
         public required string Name { get; set; }
         [Required]
-        [StringLength(254)]
+        [StringLength(DientesLimpios.Domain.ValueObjects.Email.MaxLength)]
         [EmailAddress]
         public required string Email { get; set; }
     }

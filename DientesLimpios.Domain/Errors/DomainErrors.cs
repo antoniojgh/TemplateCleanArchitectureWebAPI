@@ -51,6 +51,10 @@ namespace DientesLimpios.Domain.Errors
             public static readonly Error HasAppointmentsConflict = new(
                 "Patient.HasAppointmentsConflict",
                 "The patient cannot be deleted because appointments reference them.");
+
+            public static readonly Error NameTooLong = new(
+                "Patient.NameTooLong",
+                $"The patient name must be at most {Entities.Patient.NameMaxLength} characters.");
         }
 
         public static class Dentist
@@ -66,6 +70,10 @@ namespace DientesLimpios.Domain.Errors
             public static readonly Error HasAppointmentsConflict = new(
                 "Dentist.HasAppointmentsConflict",
                 "The dentist cannot be deleted because appointments reference them.");
+
+            public static readonly Error NameTooLong = new(
+                "Dentist.NameTooLong",
+                $"The dentist name must be at most {Entities.Dentist.NameMaxLength} characters.");
         }
 
         public static class Office
@@ -81,6 +89,10 @@ namespace DientesLimpios.Domain.Errors
             public static readonly Error HasAppointmentsConflict = new(
                 "Office.HasAppointmentsConflict",
                 "The office cannot be deleted because appointments reference it.");
+
+            public static readonly Error NameTooLong = new(
+                "Office.NameTooLong",
+                $"The office name must be at most {Entities.Office.NameMaxLength} characters.");
         }
 
         public static class TimeInterval
@@ -99,6 +111,10 @@ namespace DientesLimpios.Domain.Errors
             public static readonly Error InvalidFormat = new(
                 "Email.InvalidFormat",
                 "The email format is not valid.");
+
+            public static readonly Error TooLong = new(
+                "Email.TooLong",
+                $"The email must be at most {ValueObjects.Email.MaxLength} characters.");
         }
 
         public static class Concurrency

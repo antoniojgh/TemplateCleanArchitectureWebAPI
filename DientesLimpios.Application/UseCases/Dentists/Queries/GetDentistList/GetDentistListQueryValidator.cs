@@ -1,4 +1,6 @@
 ﻿using FluentValidation;
+using DientesLimpios.Domain.Entities;
+using DientesLimpios.Domain.ValueObjects;
 
 
 namespace DientesLimpios.Application.UseCases.Dentists.Queries.GetDentistList
@@ -16,11 +18,11 @@ namespace DientesLimpios.Application.UseCases.Dentists.Queries.GetDentistList
                 .InclusiveBetween(1, MaxRecordsPerPage);
 
             RuleFor(x => x.Name)
-                .MaximumLength(100)
+                .MaximumLength(Dentist.NameMaxLength)
                 .When(x => x.Name is not null);
 
             RuleFor(x => x.Email)
-                .MaximumLength(254)
+                .MaximumLength(Email.MaxLength)
                 .When(x => x.Email is not null);
         }
     }

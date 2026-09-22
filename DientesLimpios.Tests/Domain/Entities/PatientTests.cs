@@ -60,5 +60,14 @@ namespace DientesLimpios.Tests.Domain.Entities
             patient.Email.Value.Should().Be("felipe@ejemplo.com");
             patient.Id.Should().NotBeEmpty();
         }
+        
+        [Fact]
+        public void Create_NameLongerThanMaxLength_ReturnsFailureNameTooLong()
+        {
+            var result = Patient.Create(new string('a', Patient.NameMaxLength + 1), "felipe@ejemplo.com");
+
+            result.IsFailure.Should().BeTrue();
+            result.Error.Should().Be(DomainErrors.Patient.NameTooLong);
+        }
     }
 }

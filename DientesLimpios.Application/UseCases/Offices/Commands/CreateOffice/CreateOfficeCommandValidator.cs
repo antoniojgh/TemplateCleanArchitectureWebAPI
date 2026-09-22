@@ -1,4 +1,5 @@
 ﻿using FluentValidation;
+using DientesLimpios.Domain.Entities;
 
 namespace DientesLimpios.Application.UseCases.Offices.Commands.CreateOffice
 {
@@ -8,7 +9,7 @@ namespace DientesLimpios.Application.UseCases.Offices.Commands.CreateOffice
         {
             RuleFor(x => x.Name)
                 .NotEmpty().WithMessage("{PropertyName} Field is required")
-                .MaximumLength(150).WithMessage("The length of the {PropertyName} field must be less than or equal to {MaxLength}");
+                .MaximumLength(Office.NameMaxLength).WithMessage("The length of the {PropertyName} field must be less than or equal to {MaxLength}");
         }
     }
 }

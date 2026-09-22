@@ -14,6 +14,13 @@ dotnet_diagnostic.CA1030.severity = none
 # which is the standard naming and not a .NET EventHandler delegate.
 dotnet_diagnostic.CA1711.severity = none
 
+# CA1308: Normalize strings to uppercase
+# Disabled: Email.Create lower-cases the address because it is the stored, human-readable
+# value — it goes in the "To:" line and in confirmation emails — not a security comparison
+# key. Uppercasing would send ANA@EXAMPLE.COM to patients, and the invariant culture
+# already avoids the Turkish-I collision this rule guards against.
+dotnet_diagnostic.CA1308.severity = none
+
 dotnet_diagnostic.CA1062.severity = suggestion   # Validate arguments of public methods (noisy for DTOs / handlers)
 dotnet_diagnostic.CA1812.severity = suggestion   # Avoid uninstantiated internal classes (fires on EF Core entities, FluentValidation validators discovered by reflection)
 dotnet_diagnostic.CA1515.severity = suggestion   # Types can be made internal (would force a wide review of public API)
@@ -45,3 +52,9 @@ dotnet_diagnostic.CA1707.severity = none         # Underscore-separated test met
 dotnet_diagnostic.CA1822.severity = none         # Mark members as static (per-test arrange methods)
 dotnet_diagnostic.CA2007.severity = none         # ConfigureAwait (not relevant in test code)
 dotnet_diagnostic.CA1515.severity = none         # Tests are intentionally public
+
+# CA1308: Normalize strings to uppercase
+# Disabled: Email.Create lower-cases the address because it is stored and shown to
+# people, not used as a security comparison key. Uppercasing would send
+# ANA@EXAMPLE.COM in every confirmation email.
+dotnet_diagnostic.CA1308.severity = none
