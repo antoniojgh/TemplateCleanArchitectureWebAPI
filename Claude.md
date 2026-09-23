@@ -179,9 +179,10 @@ select new AppointmentListDTO { /* … */ Patient = p.Name, Dentist = d.Name, Of
 ```
 
 - There is no `MapperExtensions` under `UseCases/Appointments/` any more: the
-  `select new` **is** the mapping. `AppointmentCreatedEmailHandler` and
-  `SendAppointmentRemindersHandler` build their notification DTOs the same way,
-  which is why neither needs the repository.
+  `select new` **is** the mapping. `AppointmentCreatedEmailHandler`,
+  `AppointmentCancelledEmailHandler` and `SendAppointmentRemindersHandler` build
+  their notification DTOs the same way, which is why none of them needs the
+  repository.
 - The filter lives once, in
   `UseCases/Appointments/Utilities/AppointmentQueryExtensions.ApplyFilter`, shared
   by `GetAppointmentListHandler` and `SendAppointmentRemindersHandler`. It returns
@@ -233,12 +234,15 @@ What this demands of new code:
   setter (`init`, not `get`-only) or it comes back with a fresh value.
 - `OutboxSerializer` resolves an event by its short type name against the Domain
   assembly; two events with the same name in different namespaces fail at startup.
-- Delivery markers (`Appointment.ConfirmationSentAtUtc`) are written with
-  `ExecuteUpdateAsync`, bypassing both the concurrency token and the aggregate.
-  They are not part of the state machine, and a token veto would mean the email
-  gets sent again on the retry. This is the one sanctioned exception to "never
-  mutate state from a handler"; `Appointment.MarkConfirmationSent` stays as the
-  in-memory invariant and has no production caller.
+- Delivery markers (`Appointment.ConfirmationSentAtUtc`, written by
+  `AppointmentCreatedEmailHandler`, and `Appointment.CancellationSentAtUtc`, written
+  by `AppointmentCancelledEmailHandler`) are written with `ExecuteUpdateAsync`,
+  bypassing both the concurrency token and the aggregate. They are not part of the
+  state machine, and a token veto would mean the email gets sent again on the
+  retry. This is the one sanctioned exception to "never mutate state from a
+  handler"; `Appointment.MarkConfirmationSent` stays as the in-memory invariant and
+  has no production caller. `CancellationSentAtUtc` has no such method: nothing in
+  the domain sets it, so tests cover it through the outbox integration tests.
 - Events take `OccurredOnUtc` as a constructor parameter, supplied from the
   aggregate method's `nowUtc` argument (see `Appointment.Create`). Domain never
   reads the clock.
@@ -346,9 +350,11 @@ asked to fix one, write the failing test first.
 implement it. Storing an event with its aggregate is atomic, but delivery is not
 exactly-once, so do not describe it that way:
 
-- Delivery is **at-least-once**. `AppointmentCreatedEmailHandler` is idempotent
-  through `Appointment.ConfirmationSentAtUtc`, which narrows, but cannot close,
-  the window between sending an email and recording that it was sent.
+- Delivery is **at-least-once**. `AppointmentCreatedEmailHandler` and
+  `AppointmentCancelledEmailHandler` are idempotent through
+  `Appointment.ConfirmationSentAtUtc` and `Appointment.CancellationSentAtUtc`,
+  which narrow, but cannot close, the window between sending an email and
+  recording that it was sent.
 - A message stops being retried after `OutboxProcessor.MaxAttempts` (5) and stays
   in the table with `Error` set. There is no backoff between attempts, no
   dead-letter view and no alerting.

@@ -15,6 +15,7 @@ namespace DientesLimpios.Domain.Entities
         public AppointmentStatus Status { get; private set; }
         public TimeInterval TimeInterval { get; private set; } = null!;
         public DateTime? ConfirmationSentAtUtc { get; private set; }
+        public DateTime? CancellationSentAtUtc { get; private set; }
 
         private Appointment() { }   // EF Core
 
@@ -50,12 +51,15 @@ namespace DientesLimpios.Domain.Entities
             return Result.Success(appointment);
         }
 
-        public Result Cancel()
+        public Result Cancel(DateTime nowUtc)
         {
             if (Status != AppointmentStatus.Scheduled)
                 return Result.Failure(DomainErrors.Appointment.OnlyScheduledCanBeCancelled);
 
             Status = AppointmentStatus.Cancelled;
+
+            RaiseDomainEvent(new AppointmentCancelledEvent(Id, PatientId, TimeInterval.Start, nowUtc));
+
             return Result.Success();
         }
 

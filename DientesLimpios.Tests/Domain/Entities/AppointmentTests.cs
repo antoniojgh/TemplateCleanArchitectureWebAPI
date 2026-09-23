@@ -19,7 +19,9 @@ namespace DientesLimpios.Tests.Domain.Entities
 
         public AppointmentTests()
         {
-            _nowUtc = DateTime.UtcNow;
+            // A fixed instant, not the real clock: Domain receives "now" as a parameter, so
+            // the tests can pin it and assert on it exactly.
+            _nowUtc = new DateTime(2026, 9, 16, 6, 0, 0, DateTimeKind.Utc);
             _patientId = Guid.NewGuid();
             _dentistId = Guid.NewGuid();
             _officeId = Guid.NewGuid();
@@ -79,8 +81,8 @@ namespace DientesLimpios.Tests.Domain.Entities
         public void Create_StartDateInThePast_ReturnsFailureInThePast()
         {
             // Arrange
-            var startDate = DateTime.UtcNow.AddDays(-1);
-            var endDate = DateTime.UtcNow.AddHours(-23);  // still after startDate;
+            var startDate = _nowUtc.AddDays(-1);
+            var endDate = _nowUtc.AddHours(-23);  // still after startDate;
 
             // Act
             var result = Appointment.Create(_patientId, _dentistId, _officeId, startDate, endDate, _nowUtc);
@@ -100,7 +102,7 @@ namespace DientesLimpios.Tests.Domain.Entities
             var appointment = appointmentResult.Value;
 
             // Act
-            var result = appointment.Cancel();
+            var result = appointment.Cancel(_nowUtc);
 
             // Assert
             result.IsSuccess.Should().BeTrue();
@@ -116,16 +118,56 @@ namespace DientesLimpios.Tests.Domain.Entities
             appointmentResult.IsSuccess.Should().BeTrue();
             var appointment = appointmentResult.Value;
 
-            var firstCancelResult = appointment.Cancel(); // Now it is 'Cancelled'
+            var firstCancelResult = appointment.Cancel(_nowUtc); // Now it is 'Cancelled'
             firstCancelResult.IsSuccess.Should().BeTrue();
 
             // Act
-            var secondCancelResult = appointment.Cancel(); // Trying to cancel again
+            var secondCancelResult = appointment.Cancel(_nowUtc); // Trying to cancel again
 
 
             // Assert
             secondCancelResult.IsFailure.Should().BeTrue();
             secondCancelResult.Error.Should().Be(DomainErrors.Appointment.OnlyScheduledCanBeCancelled);
+        }
+
+        [Fact]
+        public void Cancel_ScheduledAppointment_RaisesAppointmentCancelledEvent()
+        {
+            // Arrange — cancel at a different instant from creation, so only the value passed
+            // to Cancel can match OccurredOnUtc.
+            var appointment = Appointment.Create(_patientId, _dentistId, _officeId,
+                _interval.Start, _interval.End, _nowUtc).Value;
+            var cancelledAtUtc = _nowUtc.AddHours(1);
+
+            // Act
+            appointment.Cancel(cancelledAtUtc).IsSuccess.Should().BeTrue();
+
+            // Assert
+            var domainEvent = appointment.DomainEvents
+                .OfType<AppointmentCancelledEvent>()
+                .Should().ContainSingle()
+                .Subject;
+
+            domainEvent.AppointmentId.Should().Be(appointment.Id);
+            domainEvent.PatientId.Should().Be(_patientId);
+            domainEvent.StartDate.Should().Be(_interval.Start);
+            domainEvent.OccurredOnUtc.Should().Be(cancelledAtUtc);
+        }
+
+        [Fact]
+        public void Cancel_AlreadyCancelledAppointment_RaisesNoSecondEvent()
+        {
+            // Arrange
+            var appointment = Appointment.Create(_patientId, _dentistId, _officeId,
+                _interval.Start, _interval.End, _nowUtc).Value;
+
+            appointment.Cancel(_nowUtc).IsSuccess.Should().BeTrue();
+
+            // Act
+            appointment.Cancel(_nowUtc.AddHours(1)).IsFailure.Should().BeTrue();
+
+            // Assert — the rejected second call leaves only the first event.
+            appointment.DomainEvents.OfType<AppointmentCancelledEvent>().Should().ContainSingle();
         }
 
         [Fact]
@@ -154,7 +196,7 @@ namespace DientesLimpios.Tests.Domain.Entities
             appointmentResult.IsSuccess.Should().BeTrue();
             var appointment = appointmentResult.Value;
 
-            var cancelResult = appointment.Cancel();
+            var cancelResult = appointment.Cancel(_nowUtc);
             cancelResult.IsSuccess.Should().BeTrue();
 
             // Act

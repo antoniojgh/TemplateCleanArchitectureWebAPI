@@ -460,7 +460,7 @@ namespace DientesLimpios.IntegrationTests
                 var db = scope.ServiceProvider.GetRequiredService<DientesLimpiosDbContext>();
 
                 var appointment = await db.Appointments.FirstAsync(a => a.Id == appointmentId);
-                appointment.Cancel().IsSuccess.Should().BeTrue();
+                appointment.Cancel(DateTime.UtcNow).IsSuccess.Should().BeTrue();
                 await db.SaveChangesAsync();
             });
 
@@ -482,6 +482,82 @@ namespace DientesLimpios.IntegrationTests
             // ...and no retry ever sends a second email.
             await ProcessOutboxOnceAsync();
             notifications.Confirmations.Should().ContainSingle(c => c.Id == appointmentId);
+        }
+
+        [Fact]
+        public async Task Outbox_CancellationFailsOnce_MessageIsRetriedAndEmailSentOnce()
+        {
+            // Arrange — a booked appointment whose confirmation is already delivered, so the
+            // cancellation is the only pending message.
+            await ProcessOutboxAsync();
+
+            var appointmentId = await CreateAppointmentAsync();
+            await ProcessOutboxAsync();
+
+            var notifications = factory.Services.GetRequiredService<RecordingNotificationService>();
+            notifications.FailNextCancellationFor(appointmentId);
+
+            await CancelAppointmentAsync(appointmentId);
+
+            // Act — first delivery, which the notification service rejects.
+            await ProcessOutboxOnceAsync();
+
+            // Assert — the failure is recorded and the message stays pending for a retry.
+            var afterFailure = await GetCancellationOutboxMessageAsync(appointmentId);
+            afterFailure.ProcessedOnUtc.Should().BeNull();
+            afterFailure.AttemptCount.Should().Be(1);
+            afterFailure.Error.Should().Contain("Simulated SMTP failure");
+            notifications.CancelledConfirmations.Should().NotContain(c => c.Id == appointmentId);
+
+            // Act — second delivery, which succeeds.
+            await ProcessOutboxOnceAsync();
+
+            // Assert — delivered exactly once in total.
+            var afterRetry = await GetCancellationOutboxMessageAsync(appointmentId);
+            afterRetry.ProcessedOnUtc.Should().NotBeNull();
+            afterRetry.Error.Should().BeNull();
+            notifications.CancelledConfirmations.Should().ContainSingle(c => c.Id == appointmentId);
+        }
+
+        [Fact]
+        public async Task Outbox_CancellationRedelivered_EmailIsNotSentTwice()
+        {
+            // Arrange — a cancelled appointment whose cancellation email was delivered once.
+            await ProcessOutboxAsync();
+
+            var appointmentId = await CreateAppointmentAsync();
+            await ProcessOutboxAsync();
+
+            await CancelAppointmentAsync(appointmentId);
+            await ProcessOutboxOnceAsync();
+
+            var notifications = factory.Services.GetRequiredService<RecordingNotificationService>();
+            notifications.CancelledConfirmations.Should().ContainSingle(c => c.Id == appointmentId);
+
+            // Act — simulate the crash window: the message was delivered but never marked,
+            // so the processor picks it up again.
+            var message = await GetCancellationOutboxMessageAsync(appointmentId);
+
+            using (var scope = factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<DientesLimpiosDbContext>();
+                await db.OutboxMessages
+                    .Where(m => m.Id == message.Id)
+                    .ExecuteUpdateAsync(s => s.SetProperty(m => m.ProcessedOnUtc, (DateTime?)null));
+            }
+
+            await ProcessOutboxOnceAsync();
+
+            // Assert — the handler found the delivery marker and did not send again.
+            notifications.CancelledConfirmations.Should().ContainSingle(c => c.Id == appointmentId);
+
+            using (var scope = factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<DientesLimpiosDbContext>();
+                var stored = await db.Appointments.FirstAsync(a => a.Id == appointmentId);
+
+                stored.CancellationSentAtUtc.Should().NotBeNull();
+            }
         }
 
 
@@ -554,6 +630,33 @@ namespace DientesLimpios.IntegrationTests
             return await processor.ProcessBatch(CancellationToken.None);
         }
 
+        // Books a fresh appointment for tomorrow through the API and returns its id.
+        private async Task<Guid> CreateAppointmentAsync()
+        {
+            var (patientId, dentistId, officeId) = await SeedCoreEntitiesAsync();
+            var start = DateTime.UtcNow.AddDays(1);
+
+            var post = await _client.PostAsJsonAsync("/api/v1/appointments", new CreateAppointmentDTO
+            {
+                PatientId = patientId,
+                DentistId = dentistId,
+                OfficeId = officeId,
+                StartDate = start,
+                EndDate = start.AddHours(1)
+            });
+
+            post.StatusCode.Should().Be(HttpStatusCode.Created);
+            return await post.Content.ReadFromJsonAsync<Guid>();
+        }
+
+        private async Task CancelAppointmentAsync(Guid appointmentId)
+        {
+            using var cancel = await _client.PostAsync(
+                new Uri($"/api/v1/appointments/cancel/{appointmentId}", UriKind.Relative), content: null);
+
+            cancel.IsSuccessStatusCode.Should().BeTrue();
+        }
+
         // Reads the outbox row for one appointment. A new scope each time, so the state comes
         // from the database and not from a DbContext cache.
         private async Task<OutboxMessage> GetOutboxMessageAsync(Guid appointmentId)
@@ -566,6 +669,19 @@ namespace DientesLimpios.IntegrationTests
                 .ToListAsync();
 
             return messages.Single(m => OutboxSerializer.ToDomainEvent(m) is AppointmentCreatedEvent e
+                                        && e.AppointmentId == appointmentId);
+        }
+
+        private async Task<OutboxMessage> GetCancellationOutboxMessageAsync(Guid appointmentId)
+        {
+            using var scope = factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<DientesLimpiosDbContext>();
+
+            var messages = await db.OutboxMessages
+                .Where(m => m.Type == nameof(AppointmentCancelledEvent))
+                .ToListAsync();
+
+            return messages.Single(m => OutboxSerializer.ToDomainEvent(m) is AppointmentCancelledEvent e
                                         && e.AppointmentId == appointmentId);
         }
 

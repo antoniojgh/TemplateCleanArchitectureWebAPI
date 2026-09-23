@@ -150,7 +150,8 @@ commit loses it when delivery fails.
 
 The flow (`Persistence/Outbox/`):
 
-1. `Appointment.Create` raises `AppointmentCreatedEvent` inside the aggregate.
+1. `Appointment.Create` raises `AppointmentCreatedEvent`, and `Appointment.Cancel`
+   raises `AppointmentCancelledEvent`, inside the aggregate.
 2. `InsertOutboxMessagesInterceptor`, a `SaveChangesInterceptor`, serialises every
    pending event into an `OutboxMessages` row **during the same `SaveChanges`**,
    so event and appointment commit — or roll back — together.
@@ -162,10 +163,13 @@ The flow (`Persistence/Outbox/`):
    `ProcessedOnUtc`, or `AttemptCount` plus `Error` when the handler throws.
    Retries stop after 5 attempts.
 
-**Guarantee: at-least-once.** `AppointmentCreatedEmailHandler` is therefore
-idempotent — it checks `Appointment.ConfirmationSentAtUtc` before sending and
-records it afterwards. That narrows, but cannot close, the window between sending
-an email and recording the send, because SMTP has no idempotency key.
+**Guarantee: at-least-once.** Every email handler is therefore idempotent through
+a delivery marker on the appointment: `AppointmentCreatedEmailHandler` checks
+`Appointment.ConfirmationSentAtUtc` before sending and records it afterwards, and
+`AppointmentCancelledEmailHandler` does the same with
+`Appointment.CancellationSentAtUtc`. That narrows, but cannot close, the window
+between sending an email and recording the send, because SMTP has no idempotency
+key.
 
 The request never waits for SMTP, and a failed email is retried rather than lost
 in a log line.
@@ -256,8 +260,8 @@ happily accept code SQL Server rejects.
 | `Office` | name required |
 
 Supporting types: `TimeInterval` (validated start and end), `Email`,
-`AppointmentStatus` (`Scheduled`, `Completed`, `Cancelled`) and
-`AppointmentCreatedEvent`.
+`AppointmentStatus` (`Scheduled`, `Completed`, `Cancelled`),
+`AppointmentCreatedEvent` and `AppointmentCancelledEvent`.
 
 ---
 

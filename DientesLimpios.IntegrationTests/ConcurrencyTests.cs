@@ -26,7 +26,7 @@ namespace DientesLimpios.IntegrationTests
 
             // Act — A cancels and commits. B still holds the row as it was, so its
             // in-memory Scheduled check passes and it tries to complete the same appointment.
-            inScopeA.Cancel().IsSuccess.Should().BeTrue();
+            inScopeA.Cancel(DateTime.UtcNow).IsSuccess.Should().BeTrue();
             await dbA.SaveChangesAsync();
 
             inScopeB.Complete().IsSuccess.Should().BeTrue();

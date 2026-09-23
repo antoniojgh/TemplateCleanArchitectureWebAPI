@@ -113,7 +113,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Appointments
             _timeProvider.GetUtcNow().Returns(new DateTimeOffset(2026, 9, 16, 6, 0, 0, TimeSpan.Zero));
 
             var cancelled = AppointmentStartingAt(new DateTime(2026, 9, 17, 8, 0, 0, DateTimeKind.Utc));
-            cancelled.Cancel().IsSuccess.Should().BeTrue();
+            cancelled.Cancel(_timeProvider.GetUtcNow().UtcDateTime).IsSuccess.Should().BeTrue();
 
             Seed(cancelled);
 

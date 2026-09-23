@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace DientesLimpios.Application.UseCases.Appointments.Commands.CancelAppointment
 {
-    public class CancelAppointmentHandler(IApplicationDbContext db, IAppointmentRepository repository, ILogger<CancelAppointmentHandler> logger) : IRequestHandler<CancelAppointmentCommand, Result>
+    public class CancelAppointmentHandler(IApplicationDbContext db, IAppointmentRepository repository, TimeProvider timeProvider, ILogger<CancelAppointmentHandler> logger) : IRequestHandler<CancelAppointmentCommand, Result>
     {
 
         public async Task<Result> Handle(CancelAppointmentCommand request, CancellationToken cancellationToken)
@@ -20,7 +20,7 @@ namespace DientesLimpios.Application.UseCases.Appointments.Commands.CancelAppoin
             if (appointment is null)
                 return Result.Failure(DomainErrors.Appointment.NotFound);
 
-            var cancelResult = appointment.Cancel();
+            var cancelResult = appointment.Cancel(timeProvider.GetUtcNow().UtcDateTime);
             if (cancelResult.IsFailure)
                 return cancelResult;
 
