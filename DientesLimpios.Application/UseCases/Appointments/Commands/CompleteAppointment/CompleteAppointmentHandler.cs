@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace DientesLimpios.Application.UseCases.Appointments.Commands.CompleteAppointment
 {
-    public class CompleteAppointmentHandler(IApplicationDbContext db, IAppointmentRepository repository, ILogger<CompleteAppointmentHandler> logger) : IRequestHandler<CompleteAppointmentCommand, Result>
+    public class CompleteAppointmentHandler(IApplicationDbContext db, IAppointmentRepository repository, TimeProvider timeProvider, ILogger<CompleteAppointmentHandler> logger) : IRequestHandler<CompleteAppointmentCommand, Result>
     {
         public async Task<Result> Handle(CompleteAppointmentCommand request, CancellationToken cancellationToken)
         {
@@ -18,7 +18,7 @@ namespace DientesLimpios.Application.UseCases.Appointments.Commands.CompleteAppo
             if (appointment is null)
                 return Result.Failure(DomainErrors.Appointment.NotFound);
 
-            var completeResult = appointment.Complete();
+            var completeResult = appointment.Complete(timeProvider.GetUtcNow().UtcDateTime);
             if (completeResult.IsFailure)
                 return completeResult;
 

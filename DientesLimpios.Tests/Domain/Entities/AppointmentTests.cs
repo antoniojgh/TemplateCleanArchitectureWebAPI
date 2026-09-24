@@ -180,7 +180,7 @@ namespace DientesLimpios.Tests.Domain.Entities
             var appointment = appointmentResult.Value;
 
             // Act
-            var result = appointment.Complete();
+            var result = appointment.Complete(_nowUtc);
 
             // Assert
             result.IsSuccess.Should().BeTrue();
@@ -200,7 +200,7 @@ namespace DientesLimpios.Tests.Domain.Entities
             cancelResult.IsSuccess.Should().BeTrue();
 
             // Act
-            var completeResult = appointment.Complete();
+            var completeResult = appointment.Complete(_nowUtc);
 
             // Assert
             completeResult.IsFailure.Should().BeTrue();
@@ -257,6 +257,5 @@ namespace DientesLimpios.Tests.Domain.Entities
                 .Should().ContainSingle()
                 .Which.OccurredOnUtc.Should().Be(nowUtc);
         }
-
     }
 }

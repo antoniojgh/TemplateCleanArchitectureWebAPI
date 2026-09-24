@@ -29,7 +29,7 @@ namespace DientesLimpios.IntegrationTests
             inScopeA.Cancel(DateTime.UtcNow).IsSuccess.Should().BeTrue();
             await dbA.SaveChangesAsync();
 
-            inScopeB.Complete().IsSuccess.Should().BeTrue();
+            inScopeB.Complete(DateTime.UtcNow).IsSuccess.Should().BeTrue();
             var act = () => dbB.SaveChangesAsync();
 
             // Assert — the second write is refused, and the first writer's state survives.

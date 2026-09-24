@@ -16,6 +16,8 @@ namespace DientesLimpios.Tests.Application.UseCases.Appointments
     {
         private readonly IApplicationDbContext _db;
         private readonly IAppointmentRepository _repository;
+
+        private readonly TimeProvider _timeProvider;
         private readonly ILogger<CompleteAppointmentHandler> _logger;
         private readonly CompleteAppointmentHandler _handler;
 
@@ -24,8 +26,9 @@ namespace DientesLimpios.Tests.Application.UseCases.Appointments
             _db = Substitute.For<IApplicationDbContext>();
             _repository = Substitute.For<IAppointmentRepository>();
             _logger = Substitute.For<ILogger<CompleteAppointmentHandler>>();
+            _timeProvider = Substitute.For<TimeProvider>();
 
-            _handler = new CompleteAppointmentHandler(_db, _repository, _logger);
+            _handler = new CompleteAppointmentHandler(_db, _repository, _timeProvider, _logger);
         }
 
         [Fact]
