@@ -4,6 +4,7 @@ using DientesLimpios.API.Extensions;
 using DientesLimpios.Application.UseCases.Appointments.Commands.CancelAppointment;
 using DientesLimpios.Application.UseCases.Appointments.Commands.CompleteAppointment;
 using DientesLimpios.Application.UseCases.Appointments.Commands.CreateAppointment;
+using DientesLimpios.Application.UseCases.Appointments.Commands.RescheduleAppointment;
 using DientesLimpios.Application.UseCases.Appointments.Commands.SendAppointmentReminders;
 using DientesLimpios.Application.UseCases.Appointments.Queries.GetAppointmentDetail;
 using DientesLimpios.Application.UseCases.Appointments.Queries.GetAppointmentList;
@@ -70,6 +71,21 @@ namespace DientesLimpios.API.Controllers
 
             var result = await mediator.Send(query, ct);
             
+            return result.ToActionResult(HttpContext);
+        }
+
+        [HttpPost("reschedule")]
+        public async Task<IActionResult> Reschedule(RescheduleAppointmentDTO rescheduleAppointmentDto, CancellationToken ct)
+        {
+            var command = new RescheduleAppointmentCommand
+            {
+                Id = rescheduleAppointmentDto.Id,
+                StartDate = rescheduleAppointmentDto.StartDate,
+                EndDate = rescheduleAppointmentDto.EndDate
+            };
+
+            var result = await mediator.Send(command, ct);
+
             return result.ToActionResult(HttpContext);
         }
 

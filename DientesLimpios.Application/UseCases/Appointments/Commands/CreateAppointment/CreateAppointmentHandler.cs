@@ -1,11 +1,10 @@
-﻿using DientesLimpios.Application.Interfaces.Repositories;
+﻿using DientesLimpios.Application.Interfaces.Persistence;
+using DientesLimpios.Application.Interfaces.Repositories;
 using DientesLimpios.Application.Utilities.Mediator;
 using DientesLimpios.Domain.Common.ResultPattern;
-using DientesLimpios.Domain.Entities;
 using DientesLimpios.Domain.Errors;
-using DientesLimpios.Application.Interfaces.Persistence;
-using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 
 namespace DientesLimpios.Application.UseCases.Appointments.Commands.CreateAppointment

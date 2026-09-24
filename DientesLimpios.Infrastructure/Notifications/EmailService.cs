@@ -45,6 +45,23 @@ namespace DientesLimpios.Infrastructure.Notifications
             await SendMessage(appointment.PatientEmail, subject, body, cancellationToken);
         }
 
+        public async Task SendAppointmentRescheduled(AppointmentRescheduledDTO appointment, CancellationToken cancellationToken)
+        {
+            var subject = "Appointment Rescheduled - Dientes Limpios";
+
+            var body = $"""
+            Dear {appointment.Patient},
+
+            Your appointment has been rescheduled to {AppointmentDateFormatter.ToClinicTime(appointment.NewStartDate, _clinicTimeZone)} - {AppointmentDateFormatter.ToClinicTime(appointment.NewEndDate, _clinicTimeZone)}.
+
+            Sorry for the inconvenience!
+
+            The Dientes Limpios Team
+            """;
+
+            await SendMessage(appointment.PatientEmail, subject, body, cancellationToken);
+        }
+
         public async Task SendAppointmentReminder(AppointmentReminderDTO appointment, CancellationToken cancellationToken)
         {
             var subject = "REMINDER: Appointment Confirmation - Dientes Limpios";

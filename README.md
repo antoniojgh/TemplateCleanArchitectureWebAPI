@@ -129,7 +129,7 @@ Clients branch on the stable `errorCode` instead of parsing prose.
 
 Aggregates inherit `AggregateRoot`, are built only through static factories
 returning `Result<T>`, keep private setters, and expose behaviour — `Cancel()`,
-`Complete()`, `MarkConfirmationSent()` — rather than data. Value objects (`Email`,
+`Complete()`, `Reschedule()`, `MarkConfirmationSent()` — rather than data. Value objects (`Email`,
 `TimeInterval`) are `sealed record`s with their own `Create` validation, mapped
 with EF Core `ComplexProperty`. Ids are `Guid.CreateVersion7()`, which keeps
 primary keys sequential and index-friendly.
@@ -150,8 +150,10 @@ commit loses it when delivery fails.
 
 The flow (`Persistence/Outbox/`):
 
-1. `Appointment.Create` raises `AppointmentCreatedEvent`, and `Appointment.Cancel`
-   raises `AppointmentCancelledEvent`, inside the aggregate.
+1. `Appointment.Create` raises `AppointmentCreatedEvent`, `Appointment.Cancel`
+   raises `AppointmentCancelledEvent`, and `Appointment.Reschedule` raises
+   `AppointmentRescheduledEvent`, inside the aggregate. Each email handler reads
+   the current appointment with a join and sends the matching email.
 2. `InsertOutboxMessagesInterceptor`, a `SaveChangesInterceptor`, serialises every
    pending event into an `OutboxMessages` row **during the same `SaveChanges`**,
    so event and appointment commit — or roll back — together.
@@ -163,13 +165,17 @@ The flow (`Persistence/Outbox/`):
    `ProcessedOnUtc`, or `AttemptCount` plus `Error` when the handler throws.
    Retries stop after 5 attempts.
 
-**Guarantee: at-least-once.** Every email handler is therefore idempotent through
+**Guarantee: at-least-once.** Email handlers are therefore made idempotent through
 a delivery marker on the appointment: `AppointmentCreatedEmailHandler` checks
 `Appointment.ConfirmationSentAtUtc` before sending and records it afterwards, and
 `AppointmentCancelledEmailHandler` does the same with
 `Appointment.CancellationSentAtUtc`. That narrows, but cannot close, the window
 between sending an email and recording the send, because SMTP has no idempotency
-key.
+key. An appointment can be rescheduled many times, so
+`AppointmentRescheduledEmailHandler` keys its marker by event instead:
+`Appointment.RescheduleNoticeEventId` holds the `EventId` of the last reschedule
+notified, so a redelivered message is skipped and the next reschedule still gets
+its own email.
 
 The request never waits for SMTP, and a failed email is retried rather than lost
 in a log line.
@@ -185,6 +191,12 @@ either.
 application lock keyed by dentist (`sp_getapplock`) before the check, so bookings
 for *different* dentists never block each other. An integration test fires two
 overlapping requests concurrently and asserts exactly one 201 and one 409.
+
+Rescheduling takes the same lock in `RescheduleIfNoOverlap`, and saves before
+committing, so a move and a new booking for the same dentist cannot both claim a
+slot. The overlap check ignores the appointment being moved: pushing a 10:00–11:00
+appointment back to 10:30–11:30 is allowed, and the slot it leaves is free again
+immediately.
 
 Editing is guarded separately. Every aggregate carries a `rowversion` token, so a
 second writer starting from a stale copy is refused rather than overwriting the
@@ -254,14 +266,15 @@ happily accept code SQL Server rejects.
 
 | Aggregate | Invariants enforced in the domain |
 |---|---|
-| `Appointment` | starts before it ends; never in the past; only a scheduled appointment can be cancelled or completed; a confirmation is recorded once |
+| `Appointment` | starts before it ends; never booked or rescheduled into the past; only a scheduled appointment can be cancelled, completed or rescheduled; a confirmation is recorded once |
 | `Patient` | name required; `Email` value object validates the format |
 | `Dentist` | name required; `Email` value object validates the format |
 | `Office` | name required |
 
 Supporting types: `TimeInterval` (validated start and end), `Email`,
 `AppointmentStatus` (`Scheduled`, `Completed`, `Cancelled`),
-`AppointmentCreatedEvent` and `AppointmentCancelledEvent`.
+`AppointmentCreatedEvent`, `AppointmentCancelledEvent` and
+`AppointmentRescheduledEvent`.
 
 ---
 
@@ -278,6 +291,7 @@ login, refresh) are mapped by `MapIdentityApi<User>` and issue bearer tokens.
 | `POST` | `/api/v1/appointments` | book: overlap-checked, raises the confirmation event |
 | `POST` | `/api/v1/appointments/complete/{id}` | mark completed |
 | `POST` | `/api/v1/appointments/cancel/{id}` | cancel |
+| `POST` | `/api/v1/appointments/reschedule` | move to a new slot (`id`, `startDate`, `endDate` in the body): overlap-checked, raises the rescheduled event |
 | `POST` | `/api/v1/appointments/reminder` | trigger the reminder run manually |
 | `GET/POST/PUT/DELETE` | `/api/v1/patients[/{id}]` | CRUD, paginated list |
 | `GET/POST/PUT/DELETE` | `/api/v1/dentists[/{id}]` | CRUD, paginated list |

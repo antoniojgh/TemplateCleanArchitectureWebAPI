@@ -208,6 +208,189 @@ namespace DientesLimpios.Tests.Domain.Entities
         }
 
         [Fact]
+        public void Reschedule_ScheduledAppointment_ChangesTimeIntervalAndStaysScheduled()
+        {
+            // Arrange
+            var appointment = Appointment.Create(_patientId, _dentistId, _officeId,
+                _interval.Start, _interval.End, _nowUtc).Value;
+            var newStart = _interval.Start.AddDays(3);
+            var newEnd = newStart.AddHours(1);
+
+            // Act
+            var result = appointment.Reschedule(newStart, newEnd, _nowUtc);
+
+            // Assert
+            result.IsSuccess.Should().BeTrue();
+            appointment.TimeInterval.Start.Should().Be(newStart);
+            appointment.TimeInterval.End.Should().Be(newEnd);
+            appointment.Status.Should().Be(AppointmentStatus.Scheduled);
+        }
+
+        [Fact]
+        public void Reschedule_ScheduledAppointment_KeepsItsParticipants()
+        {
+            // Arrange
+            var appointment = Appointment.Create(_patientId, _dentistId, _officeId,
+                _interval.Start, _interval.End, _nowUtc).Value;
+            var originalId = appointment.Id;
+
+            // Act
+            appointment.Reschedule(_interval.Start.AddDays(3), _interval.End.AddDays(3), _nowUtc).IsSuccess.Should().BeTrue();
+
+            // Assert — moving the slot changes the time, not who the appointment is for.
+            appointment.Id.Should().Be(originalId);
+            appointment.PatientId.Should().Be(_patientId);
+            appointment.DentistId.Should().Be(_dentistId);
+            appointment.OfficeId.Should().Be(_officeId);
+        }
+
+        [Fact]
+        public void Reschedule_CancelledAppointment_ReturnsFailureOnlyScheduledCanBeRescheduled()
+        {
+            // Arrange
+            var appointment = Appointment.Create(_patientId, _dentistId, _officeId,
+                _interval.Start, _interval.End, _nowUtc).Value;
+            appointment.Cancel(_nowUtc).IsSuccess.Should().BeTrue();
+
+            // Act
+            var result = appointment.Reschedule(_interval.Start.AddDays(3), _interval.End.AddDays(3), _nowUtc);
+
+            // Assert — refused, and the original slot is untouched.
+            result.IsFailure.Should().BeTrue();
+            result.Error.Should().Be(DomainErrors.Appointment.OnlyScheduledCanBeRescheduled);
+            appointment.TimeInterval.Should().Be(_interval);
+        }
+
+        [Fact]
+        public void Reschedule_CompletedAppointment_ReturnsFailureOnlyScheduledCanBeRescheduled()
+        {
+            // Arrange
+            var appointment = Appointment.Create(_patientId, _dentistId, _officeId,
+                _interval.Start, _interval.End, _nowUtc).Value;
+            appointment.Complete(_interval.End).IsSuccess.Should().BeTrue();
+
+            // Act
+            var result = appointment.Reschedule(_interval.Start.AddDays(3), _interval.End.AddDays(3), _nowUtc);
+
+            // Assert
+            result.IsFailure.Should().BeTrue();
+            result.Error.Should().Be(DomainErrors.Appointment.OnlyScheduledCanBeRescheduled);
+            appointment.TimeInterval.Should().Be(_interval);
+        }
+
+        [Fact]
+        public void Reschedule_EndBeforeStart_ReturnsFailureAndKeepsTheOriginalInterval()
+        {
+            // Arrange
+            var appointment = Appointment.Create(_patientId, _dentistId, _officeId,
+                _interval.Start, _interval.End, _nowUtc).Value;
+            var newStart = _interval.Start.AddDays(3);
+
+            // Act
+            var result = appointment.Reschedule(newStart, newStart.AddHours(-1), _nowUtc);
+
+            // Assert
+            result.IsFailure.Should().BeTrue();
+            result.Error.Should().Be(DomainErrors.TimeInterval.StartGreaterThanOrEqualToEnd);
+            appointment.TimeInterval.Should().Be(_interval);
+        }
+
+        [Fact]
+        public void Reschedule_ScheduledAppointment_RaisesAppointmentRescheduledEvent()
+        {
+            // Arrange — reschedule at a different instant from creation, so only the value
+            // passed to Reschedule can match OccurredOnUtc.
+            var appointment = Appointment.Create(_patientId, _dentistId, _officeId,
+                _interval.Start, _interval.End, _nowUtc).Value;
+            var newStart = _interval.Start.AddDays(3);
+            var newEnd = newStart.AddHours(1);
+            var rescheduledAtUtc = _nowUtc.AddHours(1);
+
+            // Act
+            appointment.Reschedule(newStart, newEnd, rescheduledAtUtc).IsSuccess.Should().BeTrue();
+
+            // Assert
+            var domainEvent = appointment.DomainEvents
+                .OfType<AppointmentRescheduledEvent>()
+                .Should().ContainSingle()
+                .Subject;
+
+            domainEvent.AppointmentId.Should().Be(appointment.Id);
+            domainEvent.PatientId.Should().Be(_patientId);
+            domainEvent.NewStartDate.Should().Be(newStart);
+            domainEvent.NewEndDate.Should().Be(newEnd);
+            domainEvent.OccurredOnUtc.Should().Be(rescheduledAtUtc);
+        }
+
+        [Fact]
+        public void Reschedule_Twice_RaisesOneEventPerReschedule()
+        {
+            // Arrange
+            var appointment = Appointment.Create(_patientId, _dentistId, _officeId,
+                _interval.Start, _interval.End, _nowUtc).Value;
+            var firstStart = _interval.Start.AddDays(3);
+            var secondStart = _interval.Start.AddDays(5);
+
+            // Act
+            appointment.Reschedule(firstStart, firstStart.AddHours(1), _nowUtc).IsSuccess.Should().BeTrue();
+            appointment.Reschedule(secondStart, secondStart.AddHours(1), _nowUtc).IsSuccess.Should().BeTrue();
+
+            // Assert — each move is its own fact, with its own EventId, in the order it happened.
+            var events = appointment.DomainEvents.OfType<AppointmentRescheduledEvent>().ToList();
+            events.Select(e => e.NewStartDate).Should().Equal(firstStart, secondStart);
+            events.Select(e => e.EventId).Should().OnlyHaveUniqueItems();
+        }
+
+        [Fact]
+        public void Reschedule_StartInThePast_ReturnsFailureInThePastAndRaisesNoEvent()
+        {
+            // Arrange
+            var appointment = Appointment.Create(_patientId, _dentistId, _officeId,
+                _interval.Start, _interval.End, _nowUtc).Value;
+            var laterNowUtc = _interval.End.AddDays(1);   // the original slot is now in the past too
+
+            // Act
+            var result = appointment.Reschedule(_interval.Start.AddHours(1), _interval.End.AddHours(1), laterNowUtc);
+
+            // Assert
+            result.IsFailure.Should().BeTrue();
+            result.Error.Should().Be(DomainErrors.Appointment.InThePast);
+            appointment.TimeInterval.Should().Be(_interval);
+            appointment.DomainEvents.OfType<AppointmentRescheduledEvent>().Should().BeEmpty();
+        }
+
+        [Fact]
+        public void Reschedule_CancelledAppointment_RaisesNoRescheduledEvent()
+        {
+            // Arrange
+            var appointment = Appointment.Create(_patientId, _dentistId, _officeId,
+                _interval.Start, _interval.End, _nowUtc).Value;
+            appointment.Cancel(_nowUtc).IsSuccess.Should().BeTrue();
+
+            // Act
+            appointment.Reschedule(_interval.Start.AddDays(3), _interval.End.AddDays(3), _nowUtc)
+                .IsFailure.Should().BeTrue();
+
+            // Assert
+            appointment.DomainEvents.OfType<AppointmentRescheduledEvent>().Should().BeEmpty();
+        }
+
+        [Fact]
+        public void Reschedule_InvalidInterval_RaisesNoRescheduledEvent()
+        {
+            // Arrange
+            var appointment = Appointment.Create(_patientId, _dentistId, _officeId,
+                _interval.Start, _interval.End, _nowUtc).Value;
+            var newStart = _interval.Start.AddDays(3);
+
+            // Act
+            appointment.Reschedule(newStart, newStart.AddHours(-1), _nowUtc).IsFailure.Should().BeTrue();
+
+            // Assert
+            appointment.DomainEvents.OfType<AppointmentRescheduledEvent>().Should().BeEmpty();
+        }
+
+        [Fact]
         public void MarkConfirmationSent_FirstTime_SetsConfirmationSentAtUtc()
         {
             // Arrange

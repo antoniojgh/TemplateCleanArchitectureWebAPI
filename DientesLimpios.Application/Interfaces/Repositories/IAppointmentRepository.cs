@@ -12,6 +12,8 @@ namespace DientesLimpios.Application.Interfaces.Repositories
         // its creation event.
         Task<Result<Guid>> AddIfNoOverlap(Guid patientId, Guid dentistId, Guid officeId, DateTime start, DateTime end, CancellationToken cancellationToken = default);
 
+        Task<Result<Guid>> RescheduleIfNoOverlap(Appointment appointment, DateTime newStart, DateTime newEnd, CancellationToken cancellationToken = default);
+
         // Gets an appointment by its ID, including related entities, and replaces the base method
         Task<Appointment?> GetById(Guid id, CancellationToken cancellationToken = default);
     }

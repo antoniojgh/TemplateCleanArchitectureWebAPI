@@ -561,6 +561,320 @@ namespace DientesLimpios.IntegrationTests
         }
 
 
+        [Fact]
+        public async Task Reschedule_ToFreeSlot_Returns200_AndStoresTheNewInterval()
+        {
+            // Arrange
+            var (patientId, dentistId, officeId) = await SeedCoreEntitiesAsync();
+            var start = WholeHourDaysAhead(2);
+            var appointmentId = await BookAsync(patientId, dentistId, officeId, start, start.AddHours(1));
+
+            var newStart = start.AddDays(1);
+
+            // Act
+            var response = await RescheduleAsync(appointmentId, newStart, newStart.AddHours(1));
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            (await response.Content.ReadFromJsonAsync<Guid>()).Should().Be(appointmentId);
+
+            var stored = await GetStoredAppointmentAsync(appointmentId);
+            stored.TimeInterval.Start.Should().Be(newStart);
+            stored.TimeInterval.End.Should().Be(newStart.AddHours(1));
+            stored.Status.Should().Be(AppointmentStatus.Scheduled);
+        }
+
+        [Fact]
+        public async Task Reschedule_OntoAnotherAppointmentOfSameDentist_Returns409_AndKeepsTheOriginalSlot()
+        {
+            // Arrange — two appointments for the same dentist on different days.
+            var (patientId, dentistId, officeId) = await SeedCoreEntitiesAsync();
+            var start = WholeHourDaysAhead(2);
+            var toMove = await BookAsync(patientId, dentistId, officeId, start, start.AddHours(1));
+            var blocking = start.AddDays(1);
+            await BookAsync(patientId, dentistId, officeId, blocking, blocking.AddHours(1));
+
+            // Act — move the first one half an hour into the second.
+            var response = await RescheduleAsync(toMove, blocking.AddMinutes(30), blocking.AddMinutes(90));
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+            var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+            ErrorCode(problem!).Should().Be("Appointment.Overlapping");
+
+            (await GetStoredAppointmentAsync(toMove)).TimeInterval.Start.Should().Be(start);
+        }
+
+        [Fact]
+        public async Task Reschedule_OverlappingItsOwnCurrentSlot_Returns200()
+        {
+            // Arrange — the dentist has nothing else booked.
+            var (patientId, dentistId, officeId) = await SeedCoreEntitiesAsync();
+            var start = WholeHourDaysAhead(2);
+            var appointmentId = await BookAsync(patientId, dentistId, officeId, start, start.AddHours(1));
+
+            // Act — push it back 30 minutes, so the new slot overlaps the one it is leaving.
+            var response = await RescheduleAsync(appointmentId, start.AddMinutes(30), start.AddMinutes(90));
+
+            // Assert — an appointment must not block itself.
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            (await GetStoredAppointmentAsync(appointmentId)).TimeInterval.Start.Should().Be(start.AddMinutes(30));
+        }
+
+        [Fact]
+        public async Task Reschedule_ReleasesTheOldSlot_SoItCanBeBookedAgain()
+        {
+            // Arrange
+            var (patientId, dentistId, officeId) = await SeedCoreEntitiesAsync();
+            var start = WholeHourDaysAhead(2);
+            var appointmentId = await BookAsync(patientId, dentistId, officeId, start, start.AddHours(1));
+
+            var newStart = start.AddDays(1);
+            (await RescheduleAsync(appointmentId, newStart, newStart.AddHours(1)))
+                .StatusCode.Should().Be(HttpStatusCode.OK);
+
+            // Act — book the slot the appointment just left.
+            var post = await _client.PostAsJsonAsync("/api/v1/appointments", new CreateAppointmentDTO
+            {
+                PatientId = patientId,
+                DentistId = dentistId,
+                OfficeId = officeId,
+                StartDate = start,
+                EndDate = start.AddHours(1)
+            });
+
+            // Assert
+            post.StatusCode.Should().Be(HttpStatusCode.Created);
+        }
+
+        [Fact]
+        public async Task Reschedule_OntoACancelledAppointmentsSlot_Returns200()
+        {
+            // Arrange — a cancelled appointment no longer occupies its slot.
+            var (patientId, dentistId, officeId) = await SeedCoreEntitiesAsync();
+            var start = WholeHourDaysAhead(2);
+            var toMove = await BookAsync(patientId, dentistId, officeId, start, start.AddHours(1));
+            var freed = start.AddDays(1);
+            var cancelled = await BookAsync(patientId, dentistId, officeId, freed, freed.AddHours(1));
+            await CancelAppointmentAsync(cancelled);
+
+            // Act
+            var response = await RescheduleAsync(toMove, freed, freed.AddHours(1));
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+        }
+
+        [Fact]
+        public async Task Reschedule_CancelledAppointment_Returns400_WithOnlyScheduledCode()
+        {
+            // Arrange
+            var (patientId, dentistId, officeId) = await SeedCoreEntitiesAsync();
+            var start = WholeHourDaysAhead(2);
+            var appointmentId = await BookAsync(patientId, dentistId, officeId, start, start.AddHours(1));
+            await CancelAppointmentAsync(appointmentId);
+
+            // Act
+            var response = await RescheduleAsync(appointmentId, start.AddDays(1), start.AddDays(1).AddHours(1));
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+            ErrorCode(problem!).Should().Be("Appointment.OnlyScheduledCanBeRescheduled");
+            (await GetStoredAppointmentAsync(appointmentId)).TimeInterval.Start.Should().Be(start);
+        }
+
+        [Fact]
+        public async Task Reschedule_UnknownAppointment_Returns404()
+        {
+            // Arrange
+            var start = WholeHourDaysAhead(2);
+
+            // Act
+            var response = await RescheduleAsync(Guid.CreateVersion7(), start, start.AddHours(1));
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+            var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+            ErrorCode(problem!).Should().Be("Appointment.NotFound");
+        }
+
+        [Fact]
+        public async Task Reschedule_StartInThePast_Returns400_AndKeepsTheOriginalSlot()
+        {
+            // Arrange
+            var (patientId, dentistId, officeId) = await SeedCoreEntitiesAsync();
+            var start = WholeHourDaysAhead(2);
+            var appointmentId = await BookAsync(patientId, dentistId, officeId, start, start.AddHours(1));
+
+            var past = WholeHourDaysAhead(-1);
+
+            // Act
+            var response = await RescheduleAsync(appointmentId, past, past.AddHours(1));
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            (await GetStoredAppointmentAsync(appointmentId)).TimeInterval.Start.Should().Be(start);
+        }
+
+
+        [Fact]
+        public async Task Outbox_Rescheduled_SendsEmailWithTheNewTimes()
+        {
+            // Arrange — a booked appointment whose confirmation is already delivered.
+            await ProcessOutboxAsync();
+
+            var (patientId, dentistId, officeId) = await SeedCoreEntitiesAsync();
+            var start = WholeHourDaysAhead(2);
+            var appointmentId = await BookAsync(patientId, dentistId, officeId, start, start.AddHours(1));
+            await ProcessOutboxAsync();
+
+            var newStart = start.AddDays(1);
+            (await RescheduleAsync(appointmentId, newStart, newStart.AddHours(1)))
+                .StatusCode.Should().Be(HttpStatusCode.OK);
+
+            // Act
+            await ProcessOutboxAsync();
+
+            // Assert — one email, carrying the new slot rather than the old one.
+            var notifications = factory.Services.GetRequiredService<RecordingNotificationService>();
+            var email = notifications.RescheduledConfirmations.Should()
+                .ContainSingle(c => c.Id == appointmentId).Subject;
+
+            email.NewStartDate.Should().Be(newStart);
+            email.NewEndDate.Should().Be(newStart.AddHours(1));
+            email.PatientEmail.Should().Be("patient@test.com");
+        }
+
+        [Fact]
+        public async Task Outbox_RescheduledEmailFailsOnce_MessageIsRetriedAndEmailSentOnce()
+        {
+            // Arrange — the reschedule is the only pending message.
+            await ProcessOutboxAsync();
+
+            var (patientId, dentistId, officeId) = await SeedCoreEntitiesAsync();
+            var start = WholeHourDaysAhead(2);
+            var appointmentId = await BookAsync(patientId, dentistId, officeId, start, start.AddHours(1));
+            await ProcessOutboxAsync();
+
+            var notifications = factory.Services.GetRequiredService<RecordingNotificationService>();
+            notifications.FailNextRescheduledFor(appointmentId);
+
+            var newStart = start.AddDays(1);
+            (await RescheduleAsync(appointmentId, newStart, newStart.AddHours(1)))
+                .StatusCode.Should().Be(HttpStatusCode.OK);
+
+            // Act — first delivery, which the notification service rejects.
+            await ProcessOutboxOnceAsync();
+
+            // Assert — the failure is recorded and the message stays pending for a retry.
+            var afterFailure = await GetRescheduledOutboxMessageAsync(appointmentId);
+            afterFailure.ProcessedOnUtc.Should().BeNull();
+            afterFailure.AttemptCount.Should().Be(1);
+            afterFailure.Error.Should().Contain("Simulated SMTP failure");
+            notifications.RescheduledConfirmations.Should().NotContain(c => c.Id == appointmentId);
+
+            // Act — second delivery, which succeeds.
+            await ProcessOutboxOnceAsync();
+
+            // Assert — delivered exactly once in total.
+            var afterRetry = await GetRescheduledOutboxMessageAsync(appointmentId);
+            afterRetry.ProcessedOnUtc.Should().NotBeNull();
+            afterRetry.Error.Should().BeNull();
+            notifications.RescheduledConfirmations.Should().ContainSingle(c => c.Id == appointmentId);
+        }
+
+        [Fact]
+        public async Task Outbox_RescheduledRedelivered_EmailIsNotSentTwice()
+        {
+            // Arrange — a rescheduled appointment whose email was delivered once.
+            await ProcessOutboxAsync();
+
+            var (patientId, dentistId, officeId) = await SeedCoreEntitiesAsync();
+            var start = WholeHourDaysAhead(2);
+            var appointmentId = await BookAsync(patientId, dentistId, officeId, start, start.AddHours(1));
+            await ProcessOutboxAsync();
+
+            var newStart = start.AddDays(1);
+            (await RescheduleAsync(appointmentId, newStart, newStart.AddHours(1)))
+                .StatusCode.Should().Be(HttpStatusCode.OK);
+            await ProcessOutboxOnceAsync();
+
+            var notifications = factory.Services.GetRequiredService<RecordingNotificationService>();
+            notifications.RescheduledConfirmations.Should().ContainSingle(c => c.Id == appointmentId);
+
+            // Act — simulate the crash window: the message was delivered but never marked,
+            // so the processor picks it up again.
+            var message = await GetRescheduledOutboxMessageAsync(appointmentId);
+
+            using (var scope = factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<DientesLimpiosDbContext>();
+                await db.OutboxMessages
+                    .Where(m => m.Id == message.Id)
+                    .ExecuteUpdateAsync(s => s.SetProperty(m => m.ProcessedOnUtc, (DateTime?)null));
+            }
+
+            await ProcessOutboxOnceAsync();
+
+            // Assert — the outbox delivers at least once, so the handler must recognise the repeat.
+            notifications.RescheduledConfirmations.Should().ContainSingle(c => c.Id == appointmentId);
+        }
+
+        [Fact]
+        public async Task Outbox_RescheduledEmail_KeepsTheBookingConfirmationTime()
+        {
+            // Arrange — booked and confirmed.
+            await ProcessOutboxAsync();
+
+            var (patientId, dentistId, officeId) = await SeedCoreEntitiesAsync();
+            var start = WholeHourDaysAhead(2);
+            var appointmentId = await BookAsync(patientId, dentistId, officeId, start, start.AddHours(1));
+            await ProcessOutboxAsync();
+
+            var confirmedAtUtc = (await GetStoredAppointmentAsync(appointmentId)).ConfirmationSentAtUtc;
+            confirmedAtUtc.Should().NotBeNull();
+
+            var newStart = start.AddDays(1);
+            (await RescheduleAsync(appointmentId, newStart, newStart.AddHours(1)))
+                .StatusCode.Should().Be(HttpStatusCode.OK);
+
+            // Act
+            await ProcessOutboxAsync();
+
+            // Assert — ConfirmationSentAtUtc records the booking email; the reschedule email
+            // must not overwrite it.
+            (await GetStoredAppointmentAsync(appointmentId)).ConfirmationSentAtUtc.Should().Be(confirmedAtUtc);
+        }
+
+        [Fact]
+        public async Task Reschedule_Overlapping_WritesNoRescheduledOutboxMessage()
+        {
+            // Arrange — two appointments for the same dentist on different days.
+            var (patientId, dentistId, officeId) = await SeedCoreEntitiesAsync();
+            var start = WholeHourDaysAhead(2);
+            var toMove = await BookAsync(patientId, dentistId, officeId, start, start.AddHours(1));
+            var blocking = start.AddDays(1);
+            await BookAsync(patientId, dentistId, officeId, blocking, blocking.AddHours(1));
+
+            // Act
+            (await RescheduleAsync(toMove, blocking, blocking.AddHours(1)))
+                .StatusCode.Should().Be(HttpStatusCode.Conflict);
+
+            // Assert — a refused reschedule is not a fact, so nothing is queued to announce it.
+            using var scope = factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<DientesLimpiosDbContext>();
+
+            var messages = await db.OutboxMessages
+                .Where(m => m.Type == nameof(AppointmentRescheduledEvent))
+                .ToListAsync();
+
+            messages.Select(OutboxSerializer.ToDomainEvent)
+                    .OfType<AppointmentRescheduledEvent>()
+                    .Should().NotContain(e => e.AppointmentId == toMove);
+        }
+
+
         private static StringContent AppointmentJson(Guid patientId, Guid dentistId, Guid officeId,
                                                      string start, string end) =>
             new($$"""
@@ -649,6 +963,44 @@ namespace DientesLimpios.IntegrationTests
             return await post.Content.ReadFromJsonAsync<Guid>();
         }
 
+        // A whole hour, so the value survives the JSON and datetime2 round trips unchanged and
+        // the reschedule tests can compare instants exactly.
+        private static DateTime WholeHourDaysAhead(int days) =>
+            DateTime.UtcNow.Date.AddDays(days).AddHours(10);
+
+        private async Task<Guid> BookAsync(Guid patientId, Guid dentistId, Guid officeId,
+                                           DateTime start, DateTime end)
+        {
+            var post = await _client.PostAsJsonAsync("/api/v1/appointments", new CreateAppointmentDTO
+            {
+                PatientId = patientId,
+                DentistId = dentistId,
+                OfficeId = officeId,
+                StartDate = start,
+                EndDate = end
+            });
+
+            post.StatusCode.Should().Be(HttpStatusCode.Created);
+            return await post.Content.ReadFromJsonAsync<Guid>();
+        }
+
+        private Task<HttpResponseMessage> RescheduleAsync(Guid appointmentId, DateTime start, DateTime end) =>
+            _client.PostAsJsonAsync("/api/v1/appointments/reschedule", new RescheduleAppointmentDTO
+            {
+                Id = appointmentId,
+                StartDate = start,
+                EndDate = end
+            });
+
+        // A new scope, so the state comes from the database and not from a DbContext cache.
+        private async Task<Appointment> GetStoredAppointmentAsync(Guid appointmentId)
+        {
+            using var scope = factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<DientesLimpiosDbContext>();
+
+            return await db.Appointments.AsNoTracking().FirstAsync(a => a.Id == appointmentId);
+        }
+
         private async Task CancelAppointmentAsync(Guid appointmentId)
         {
             using var cancel = await _client.PostAsync(
@@ -669,6 +1021,19 @@ namespace DientesLimpios.IntegrationTests
                 .ToListAsync();
 
             return messages.Single(m => OutboxSerializer.ToDomainEvent(m) is AppointmentCreatedEvent e
+                                        && e.AppointmentId == appointmentId);
+        }
+
+        private async Task<OutboxMessage> GetRescheduledOutboxMessageAsync(Guid appointmentId)
+        {
+            using var scope = factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<DientesLimpiosDbContext>();
+
+            var messages = await db.OutboxMessages
+                .Where(m => m.Type == nameof(AppointmentRescheduledEvent))
+                .ToListAsync();
+
+            return messages.Single(m => OutboxSerializer.ToDomainEvent(m) is AppointmentRescheduledEvent e
                                         && e.AppointmentId == appointmentId);
         }
 

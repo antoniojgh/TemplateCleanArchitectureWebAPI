@@ -135,8 +135,8 @@ Responses are RFC 9457 `ProblemDetails` with an `errorCode` extension.
 - Ids are `Guid.CreateVersion7()`, generated in the factory.
 - Value objects are `sealed record` with `private init` and a `Create`
   factory, mapped with EF Core `ComplexProperty`.
-- Behaviour lives on the aggregate (`Cancel()`, `Complete()`), returning
-  `Result`. Never mutate state from a handler.
+- Behaviour lives on the aggregate (`Cancel()`, `Complete()`, `Reschedule()`),
+  returning `Result`. Never mutate state from a handler.
 - Domain events are raised inside the aggregate via `RaiseDomainEvent`.
 - Aggregates carry a `RowVersion` optimistic-concurrency token (configured for
   every `AggregateRoot` in `DientesLimpiosDbContext.OnModelCreating`), so a second
@@ -180,9 +180,9 @@ select new AppointmentListDTO { /* … */ Patient = p.Name, Dentist = d.Name, Of
 
 - There is no `MapperExtensions` under `UseCases/Appointments/` any more: the
   `select new` **is** the mapping. `AppointmentCreatedEmailHandler`,
-  `AppointmentCancelledEmailHandler` and `SendAppointmentRemindersHandler` build
-  their notification DTOs the same way, which is why none of them needs the
-  repository.
+  `AppointmentCancelledEmailHandler`, `AppointmentRescheduledEmailHandler` and
+  `SendAppointmentRemindersHandler` build their notification DTOs the same way,
+  which is why none of them needs the repository.
 - The filter lives once, in
   `UseCases/Appointments/Utilities/AppointmentQueryExtensions.ApplyFilter`, shared
   by `GetAppointmentListHandler` and `SendAppointmentRemindersHandler`. It returns
@@ -215,6 +215,18 @@ Command handlers persist with `db.SaveChangesAsResult(ct)`, which turns a
 — a 409 by the error-code suffix convention — instead of letting it escape as a
 500. When a mediator pipeline exists, that `catch` moves there and the helper goes.
 
+Booking and rescheduling are the exception: they save inside the repository,
+because the overlap check and the write must be one step.
+`AppointmentRepository.AddIfNoOverlap` and `RescheduleIfNoOverlap` each open a
+transaction, take `sp_getapplock` on `appointment:dentist:{id}`, check for overlap
+against `Scheduled` appointments, change the aggregate, save with
+`SaveChangesAsResult` and only then commit. Two rules follow:
+
+- Never move that save into the handler. Saving after `CommitAsync` releases the
+  lock before the write, and two concurrent requests can then double-book a dentist.
+- `RescheduleIfNoOverlap` excludes the appointment's own row (`x.Id != appointment.Id`),
+  so moving an appointment into a slot that overlaps its current one is allowed.
+
 ### Domain events and the outbox
 
 Aggregates raise events with `RaiseDomainEvent`. `InsertOutboxMessagesInterceptor`
@@ -243,6 +255,11 @@ What this demands of new code:
   handler"; `Appointment.MarkConfirmationSent` stays as the in-memory invariant and
   has no production caller. `CancellationSentAtUtc` has no such method: nothing in
   the domain sets it, so tests cover it through the outbox integration tests.
+- One marker per email, never shared. An event that can happen more than once per
+  appointment needs a marker keyed by event, not a timestamp:
+  `Appointment.RescheduleNoticeEventId` (written by
+  `AppointmentRescheduledEmailHandler`) stores the `EventId` of the last reschedule
+  notified, so a redelivery is skipped and the next reschedule still gets its email.
 - Events take `OccurredOnUtc` as a constructor parameter, supplied from the
   aggregate method's `nowUtc` argument (see `Appointment.Create`). Domain never
   reads the clock.
@@ -264,7 +281,8 @@ Reading "now":
 - Non-test code never calls `DateTime.UtcNow` or `DateTime.Now`. It takes the
   injected `TimeProvider`, registered once in `ApplicationServiceRegistration`.
 - **Domain** stays free of the abstraction and receives the instant as a
-  parameter (`Appointment.Create(..., nowUtc)`, `MarkConfirmationSent(nowUtc)`).
+  parameter (`Appointment.Create(..., nowUtc)`, `Reschedule(..., nowUtc)`,
+  `MarkConfirmationSent(nowUtc)`).
 - **Validators** read the clock inside a lambda
   (`GreaterThan(_ => timeProvider.GetUtcNow().UtcDateTime)`). A plain value is
   captured once, when the validator is constructed.
@@ -342,6 +360,11 @@ asked to fix one, write the failing test first.
 - `SimpleMediator` still dispatches requests by reflection (`GetMethod` +
   `Invoke`). `DomainEventDispatcher` no longer does: it uses a cached generic
   wrapper, which is the technique to copy when reworking the mediator.
+- The reschedule endpoint does not match its siblings: it is `POST
+  /appointments/reschedule` with the id in the body (cancel and complete use
+  `cancel/{id}` and `complete/{id}`), and the command returns `Result<Guid>` — a
+  200 with an id the caller already sent — where the others return `Result` and a
+  204.
 - `.github/workflows/` is empty — there is no CI.
 
 **The outbox is implemented — know its limits**
@@ -355,6 +378,11 @@ exactly-once, so do not describe it that way:
   `Appointment.ConfirmationSentAtUtc` and `Appointment.CancellationSentAtUtc`,
   which narrow, but cannot close, the window between sending an email and
   recording that it was sent.
+- `AppointmentRescheduledEmailHandler` is idempotent per event through
+  `Appointment.RescheduleNoticeEventId`, which holds only the *last* notified
+  reschedule. If two reschedules of one appointment are processed out of order and
+  the older one is then redelivered, it is sent again. Closing that needs an inbox
+  table of handled `EventId`s, which is also the natural home for any fourth email.
 - A message stops being retried after `OutboxProcessor.MaxAttempts` (5) and stays
   in the table with `Error` set. There is no backoff between attempts, no
   dead-letter view and no alerting.

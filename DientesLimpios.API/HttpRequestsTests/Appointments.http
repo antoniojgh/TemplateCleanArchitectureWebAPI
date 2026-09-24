@@ -14,18 +14,29 @@ Authorization: Bearer
 
 POST {{DientesLimpios.API_HostAddress}}
 Content-Type: application/json
-Authorization: Bearer 
+Authorization: Bearer CfDJ8FkyPjhqepVDufk2KayVWTcaTUb1aZtc6mYE13VE-VmTD-lYMhZTlQZrWuUaBEtDgdMrS0j-ftWpRWO8z_qM_P7quKwoxd-I8J8avognmB5Ac472jTichRBDbI-kzUwStK3xDfYM4w8sfNsaDgdI4T53OweVCcVj-i--RkuPqoBKJrYyQyC3v87ERO_tR7cyYRKHoZ6x7LmTg0uz96cA2hiwJs_fF6i4bwiHkiRe8WJZk8GmLVT2aATYpOeHevrDAJpzWcEEu4XJJvHwqkdS-gr6d1HSJNAew4yIXSS__L2GRovwqwsoN25DrGC3ezBJEoS6h-I1R1r3QhdIstEbqaKgWOMQ7IEglTMzqS3y8HRSL1trtXVqi1V-EvCQra7lT2bJ3OIDnnIFLLsxYl6bV2yc7t2SFx-eqBgXKaFItpJDaLfB6zmGRX5-n9nQwdc8ronE6hLH1ALQia4XFCEY5HQZ-18GgQsMqrIu5EBUTW__Zi2ztgl78SzJgx5lkWtGI60qzYvl75yUqxbS56LTcgX9G7Shmwvw0FYU_3BaCNLDIqBxEocCRqI8_P3yhTtDNBDzSJZv5luKdqLmaIR5OkuydcxiFk8BtsQqhQtHbCjizZU4zykyzHxdo3zOgjTNKOw6Qwf95Z0HW5H73JL7iEHxd8AWCq9kTxLNndoHDuiWCe0sLBVVhky2kdgcq1Xztfw3OOJjtVdO4q8UOG5RIkCZD_UyaptZAUSIhfNa5EbY
 
 {
   "PatientId": "01A06B98-A894-7351-8ADF-451B0CFC87FF",
   "DentistId": "01A06B95-C364-70D7-853F-B90436097B7F",
   "OfficeId": "01A06B90-4AFA-748E-BBDF-A376060F83D7",
-  "StartDate": "2026-09-23T16:30:00+02:00",
-  "EndDate": "2026-09-23T16:45:00+02:00"
+  "StartDate": "2026-09-24T15:30:00+02:00",
+  "EndDate": "2026-09-24T15:45:00+02:00"
 }
 
 ###
 
+POST {{DientesLimpios.API_HostAddress}}/reschedule
+Content-Type: application/json
+Authorization: Bearer CfDJ8FkyPjhqepVDufk2KayVWTeRtf3n0xqkXxDBG1qDscGA5cMQGVPog-8wi3NR8FgUMUzmHgrnSMyvGHoiudT2UqgSu2ytXsHgDOSc6yDc-my5ZdrYkC-g24e4Sk8b2LLVGKCP-NwjuMMx0ds3M4q-OtcJUC-onKq8CT6BLtKbRfIkYxmfiMIsoqGB-Eaeglf7834WOjqaup7HiVe4MUKrVmxm0E7mzxDUG7afpnN2D3iEGRQtgWARv4i9TtsxyjUeL_vlhzDQ-jTBe7-uUSiTaLVF74tg8RVYvl2BFtpbJPThWA6jtogpLPjU5ZbkAj7LZd6et4KW7C00Jb7gcBlnY-Lhh2_aebQyvD-R7zP0G6JetfXmaMyNoWrm930ptKvVrye9nrO_sUlfzXCCexO69LbjW0O_fsp_JZ6RMJHzz8rBsIN53bR97APXKW_2rdfoxpht_HneDiTXZqMvjsxXh0j2CNPz5UXe7Lw0DalqoXZc-ZfMbI6xSAqpZ1f5CiB_XgJypw1EwDMKRyqcHeTGaGOmIai2l82pGxXrqn4IXnEqdYuDzqnnCVMgKhn6-zW-XB5TZyIxAiA9l31Px0aj83bLLDAn43yR33i4-Aaa4fqy7yZoQYrUrOE4BG49PFWRRlc1PQtYEqqsy91-PJD_YIMmiwCuySBoR60txgPrGs3YrEQJ4Nidr_ACfJZSjJnK94sWikXtVgSesVDmymJg2eHuiq7hmVkKsQLLLtySO59T
+
+{
+  "Id": "01A0D349-7FAF-71B9-96E0-C7D2F9C77C04",
+  "StartDate": "2026-09-24T16:35:00+02:00",
+  "EndDate": "2026-09-24T16:39:00+02:00"
+}
+
+###
 
 POST {{DientesLimpios.API_HostAddress}}/complete/019E6834-CB14-7AA3-BE43-D4DA8FD4EB41
 Accept: application/json
@@ -39,7 +50,6 @@ Accept: application/json
 Authorization: Bearer 
 
 ###
-
 
 POST {{DientesLimpios.API_HostAddress}}/reminder
 Accept: application/json

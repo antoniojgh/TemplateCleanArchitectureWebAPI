@@ -16,6 +16,10 @@ namespace DientesLimpios.Domain.Entities
         public TimeInterval TimeInterval { get; private set; } = null!;
         public DateTime? ConfirmationSentAtUtc { get; private set; }
         public DateTime? CancellationSentAtUtc { get; private set; }
+
+        // Keyed by event, not by time: an appointment can be rescheduled many times, and each
+        // reschedule gets its own email.
+        public Guid? RescheduleNoticeEventId { get; private set; }
         public DateTime? CompletedAtUtc { get; private set; }
 
         private Appointment() { }   // EF Core
@@ -71,6 +75,25 @@ namespace DientesLimpios.Domain.Entities
 
             Status = AppointmentStatus.Completed;
             CompletedAtUtc = nowUtc;
+            return Result.Success();
+        }
+
+        public Result Reschedule(DateTime newStartDate, DateTime newEndDate, DateTime nowUtc)
+        {
+            if (Status != AppointmentStatus.Scheduled)
+                return Result.Failure(DomainErrors.Appointment.OnlyScheduledCanBeRescheduled);
+
+            if (newStartDate < nowUtc)
+                return Result.Failure(DomainErrors.Appointment.InThePast);
+
+            var intervalResult = TimeInterval.Create(newStartDate, newEndDate);
+            if (intervalResult.IsFailure)
+                return Result.Failure(intervalResult.Error);
+
+            TimeInterval = intervalResult.Value;
+
+            RaiseDomainEvent(new AppointmentRescheduledEvent(Id, PatientId, TimeInterval.Start, TimeInterval.End, nowUtc));
+
             return Result.Success();
         }
 

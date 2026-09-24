@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using DientesLimpios.Application.Interfaces.Persistence;
 using DientesLimpios.Application.Interfaces.Repositories;
 using DientesLimpios.Domain.Common.ResultPattern;
 using DientesLimpios.Domain.Entities;
@@ -13,7 +14,7 @@ namespace DientesLimpios.Persistence.Repositories
         // before the request fails outright rather than queueing indefinitely.
         private const int LockTimeoutMilliseconds = 5000;
 
-        public async Task<Result<Guid>> AddIfNoOverlap(Guid patientId, Guid dentistId, Guid officeId, DateTime start,DateTime end, CancellationToken cancellationToken = default)
+        public async Task<Result<Guid>> AddIfNoOverlap(Guid patientId, Guid dentistId, Guid officeId, DateTime start, DateTime end, CancellationToken cancellationToken = default)
         {
             var lockResource = $"appointment:dentist:{dentistId}";
 
@@ -62,6 +63,60 @@ namespace DientesLimpios.Persistence.Repositories
 
             return Result.Success(appointmentResult.Value.Id);
         }
+
+        public async Task<Result<Guid>> RescheduleIfNoOverlap(Appointment appointment, DateTime newStart, DateTime newEnd, CancellationToken cancellationToken = default)
+        {
+            var lockResource = $"appointment:dentist:{appointment.DentistId}";
+
+            await using var transaction = await context.Database
+                .BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+
+            // "These two intervals do not overlap" cannot be expressed as a unique index, so the
+            // invariant is protected with an application lock instead. Keying it on the dentist
+            // means concurrent bookings for different dentists never block each other, and taking
+            // it before the read means there is no shared-to-exclusive upgrade to deadlock on.
+            // sp_getapplock reports failure through its return value, not through an error.
+            await context.Database.ExecuteSqlInterpolatedAsync(
+                $"""
+         DECLARE @lockResult int;
+         EXEC @lockResult = sp_getapplock
+              @Resource = {lockResource},
+              @LockMode = 'Exclusive',
+              @LockOwner = 'Transaction',
+              @LockTimeout = {LockTimeoutMilliseconds};
+         IF @lockResult < 0
+             THROW 51000, 'Could not acquire the dentist booking lock.', 1;
+         """,
+                cancellationToken);
+
+            var overlaps = await context.Appointments
+                .AnyAsync(x => x.Id != appointment.Id &&   // the slot it is leaving does not block it
+                               x.DentistId == appointment.DentistId &&
+                               x.Status == Domain.Enums.AppointmentStatus.Scheduled &&
+                               newStart < x.TimeInterval.End &&
+                               newEnd > x.TimeInterval.Start,
+                          cancellationToken);
+
+            if (overlaps)
+                return Result.Failure<Guid>(DomainErrors.Appointment.Overlapping);
+
+            // The slot is free and the lock is held until this transaction ends, so the booking
+            // is now a fact. Only here is it correct to Reschedule
+            var appointmentResult = appointment.Reschedule(newStart, newEnd, timeProvider.GetUtcNow().UtcDateTime);
+
+            if (appointmentResult.IsFailure)
+                return Result.Failure<Guid>(appointmentResult.Error);
+
+            // Saved while the lock is held: the check and the write must be one step.
+            var saveResult = await context.SaveChangesAsResult(cancellationToken);
+            if (saveResult.IsFailure)
+                return Result.Failure<Guid>(saveResult.Error);
+
+            await transaction.CommitAsync(cancellationToken);
+
+            return Result.Success(appointment.Id);
+        }
+
         public async Task<Appointment?> GetById(Guid id, CancellationToken cancellationToken = default)
         {
             return await context.Appointments.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);

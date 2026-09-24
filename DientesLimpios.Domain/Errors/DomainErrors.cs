@@ -28,6 +28,9 @@ namespace DientesLimpios.Domain.Errors
             public static readonly Error OnlyScheduledCanBeCompleted = new(
                 "Appointment.OnlyScheduledCanBeCompleted",
                 "Only scheduled appointments can be completed.");
+            public static readonly Error OnlyScheduledCanBeRescheduled = new(
+                "Appointment.OnlyScheduledCanBeRescheduled",
+                "Only scheduled appointments can be rescheduled .");
 
             public static readonly Error Overlapping = new(
                 "Appointment.Overlapping",
