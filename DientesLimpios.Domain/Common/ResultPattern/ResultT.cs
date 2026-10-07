@@ -14,8 +14,6 @@
             ? _value!
             : throw new InvalidOperationException(
                 "Cannot access the value of a failed result.");
-
-        public static implicit operator Result<TValue>(TValue? value) => Create(value);
     }
 
 }
