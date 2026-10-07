@@ -4,13 +4,6 @@ namespace DientesLimpios.Domain.Errors
 {
     public static class DomainErrors
     {
-        public static class General
-        {
-            public static readonly Error NotFound = new(
-                "General.NotFound",
-                "The requested resource was not found.");
-        }
-
         public static class Appointment
         {
             public static readonly Error NotFound = new(

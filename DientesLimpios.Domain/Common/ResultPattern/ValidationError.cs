@@ -3,7 +3,7 @@
     public sealed class ValidationError : Error
     {
         public ValidationError(Error[] errors)
-            : base("Validacion.General", "One or more validation errors occurred.")
+            : base("Validation.General", "One or more validation errors occurred.")
         {
             Errors = errors;
         }
