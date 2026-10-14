@@ -26,7 +26,7 @@ namespace DientesLimpios.Application.UseCases.Dentists.Commands.DeleteDentist
                 return Result.Failure(DomainErrors.Dentist.HasAppointmentsConflict);
 
             db.Dentists.Remove(dentist);
-            await db.SaveChangesAsync(cancellationToken);
+            await db.SaveChangesAsResult(cancellationToken);
 
             logger.LogInformation("Dentist deleted successfully with ID: {DentistId}", request.Id);
 

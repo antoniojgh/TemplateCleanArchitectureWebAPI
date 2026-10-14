@@ -13,7 +13,7 @@ namespace DientesLimpios.Application.UseCases.Offices.Queries.GetOfficeList
             logger.LogInformation("Retrieving office list");
 
             var offices = await db.Offices.AsNoTracking().ToListAsync(cancellationToken);
-            var officesDTO = offices.Select(office => office.ADto()).ToList();
+            var officesDTO = offices.Select(o => new OfficeListDTO { Id = o.Id, Name = o.Name }).OrderBy(o => o.Name).ToList();
 
             logger.LogInformation("Office list retrieved successfully with {OfficeCount} offices", officesDTO.Count);
 

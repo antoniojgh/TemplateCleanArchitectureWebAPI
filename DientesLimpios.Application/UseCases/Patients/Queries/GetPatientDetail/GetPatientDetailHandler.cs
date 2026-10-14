@@ -13,17 +13,18 @@ namespace DientesLimpios.Application.UseCases.Patients.Queries.GetPatientDetail
         {
             logger.LogInformation("Retrieving patient detail with ID: {PatientId}", request.Id);
 
-            var patient = await db.Patients
-                                  .AsNoTracking()
-                                  .FirstOrDefaultAsync(p => p.Id == request.Id, cancellationToken);
+            var patientDTO = await db.Patients
+                .Where(p => p.Id == request.Id)
+                .Select(p => new PatientDetailDTO { Id = p.Id, Name = p.Name, Email = p.Email.Value })
+                .FirstOrDefaultAsync(cancellationToken);
 
 
-            if (patient is null)
+            if (patientDTO is null)
                 return Result.Failure<PatientDetailDTO>(DomainErrors.Patient.NotFound);
 
             logger.LogInformation("Patient detail retrieved successfully with ID: {PatientId}", request.Id);
 
-            return Result.Success(patient.ADto());
+            return Result.Success(patientDTO);
         }
     }
 }

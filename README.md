@@ -54,7 +54,9 @@ core never takes a dependency on a database or an SMTP client.
 **These rules are enforced, not merely documented.** `DientesLimpios.ArchitectureTests`
 uses NetArchTest to fail the build if Domain ever references
 `Microsoft.EntityFrameworkCore`, `Microsoft.AspNetCore`, `FluentValidation` or
-`MediatR`, or if Application references an outward project.
+`MediatR`, or if Application references an outward project. The same project
+guards the read/write split described below: query handlers may not depend on a
+repository, and repository interfaces may not depend on use-case types.
 
 ---
 
@@ -75,18 +77,34 @@ dependency — and it demonstrates the pattern itself rather than the package.
 is repeated. Handlers are still discovered automatically (Scrutor assembly
 scanning), so adding a use case requires no DI registration.
 
-### Hand-written mapping instead of AutoMapper
+### Commands go through the aggregate, queries project straight to DTOs
 
-The dentist, office and patient queries map a loaded entity with an explicit
-`MapperExtensions` in the use-case folder. The appointment queries skip that step
-altogether: the handler projects from the `DbContext` straight into its DTO, so
-the `select new` *is* the mapping.
+There is one rule for data access, the usual CQRS split:
 
-**Why:** mapping mistakes become compile errors instead of runtime surprises, and
-the projection is visible where it is used. Where a DTO needs data from more than
-one aggregate — an appointment plus the patient, dentist and office names —
-projecting in the query is also the cheaper path: three joined columns are read
-instead of three whole aggregates being materialised to copy one string from each.
+- **Commands** load the aggregate, change it through its own methods and save.
+  Dentists, offices and patients are loaded from their `DbSet`. Appointments go
+  through `IAppointmentRepository`, the only repository, because booking and
+  rescheduling must check for overlaps and write under one lock.
+- **Queries** never load an aggregate. The handler projects from the `DbContext`
+  straight into its DTO, so the `select new` *is* the mapping. There is no
+  AutoMapper and there are no mapper classes. Paged lists order, project and then
+  call `ToPagedAsync`, which counts the filtered rows before taking the page.
+
+```csharp
+var page = await dentists                        // already filtered
+    .OrderBy(d => d.Name).ThenBy(d => d.Id)
+    .Select(d => new DentistListDTO { Id = d.Id, Name = d.Name, Email = d.Email.Value })
+    .ToPagedAsync(request.Page, request.RecordsPerPage, cancellationToken);
+```
+
+**Why:** a reader can tell where any data access belongs from whether it is a
+command or a query. Repositories stay small, because they hold only what the
+domain needs, never filters or paging. Projections read only the columns the DTO
+uses, and mapping mistakes become compile errors instead of runtime surprises.
+Where a DTO needs data from more than one aggregate (an appointment plus the
+patient, dentist and office names), the query joins on the id columns: three
+columns are read instead of three whole aggregates being materialised to copy one
+string from each.
 
 ### Result pattern instead of exceptions for business outcomes
 
@@ -420,7 +438,7 @@ dotnet test DientesLimpios.IntegrationTests   # needs Docker running
 | Project | Covers |
 |---|---|
 | `DientesLimpios.Tests` | domain invariants, use-case handlers with NSubstitute mocks, validators and the reminder window with a pinned clock, the reminder job schedule with `FakeTimeProvider`, the JSON time converter, `ProblemDetails` mapping, outbox serialisation |
-| `DientesLimpios.ArchitectureTests` | the dependency rules above, via NetArchTest |
+| `DientesLimpios.ArchitectureTests` | the dependency rules above and the read/write split, via NetArchTest |
 | `DientesLimpios.IntegrationTests` | full HTTP-to-SQL-Server round trips: booking, 409 on overlap, concurrent double booking, restricted deletes, outbox persistence, retry after a failed send, no duplicate email on redelivery, and the time contract (offset in, `Z` out, zone-less input rejected) |
 
 Integration tests start a `mcr.microsoft.com/mssql/server:2022-latest` container,
@@ -460,10 +478,8 @@ do yet.
 - **Email delivery is at-least-once**, and a message that fails five times stays
   in `OutboxMessages` with its error. There is no retry backoff, dead-letter view
   or alerting.
-- **Data access is still mixed.** The appointment use cases now follow the
-  intended split — commands load the aggregate through a repository, queries
-  project straight to DTOs — but `CreateAppointmentHandler` uses both styles, and
-  the dentist, office and patient queries still load entities and map them.
+- **The office list is not a projection yet.** It loads every office and maps
+  in memory, and it is not paged.
 - **Validation is duplicated** across API DataAnnotations, FluentValidation and
   the domain factories, with rules that do not always agree.
 - **The concurrency token is not exposed to clients.** Aggregates carry a
@@ -479,7 +495,7 @@ do yet.
   fires somewhere between 08:00 and 08:59. A restart during that hour sends the
   reminders twice, and downtime covering the whole hour skips the day.
 - **Spanish remnants** from the original codebase are still being renamed
-  (`ADto`, `AgregarServicesDeX`, the `esadmin` policy).
+  (`AgregarServicesDeX`, the `esadmin` policy).
 
 ---
 

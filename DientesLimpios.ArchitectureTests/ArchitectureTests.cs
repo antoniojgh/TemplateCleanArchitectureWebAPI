@@ -190,5 +190,49 @@ namespace DientesLimpios.ArchitectureTests
         }
 
         #endregion
+
+        #region Tests for the read/write split
+
+        [Fact]
+        public void QueryHandlers_Should_Not_HaveDependencyOnRepositories()
+        {
+            // Arrange
+            var assembly = typeof(Application.Interfaces.Identity.IUserService).Assembly;
+
+            // Act
+            var testsResult = Types
+                .InAssembly(assembly)
+                .That()
+                .ResideInNamespaceContaining(".Queries.")
+                .And()
+                .HaveNameEndingWith("Handler", System.StringComparison.Ordinal)
+                .ShouldNot()
+                .HaveDependencyOn("DientesLimpios.Application.Interfaces.Repositories")
+                .GetResult();
+
+            // Assert
+            testsResult.IsSuccessful.Should().BeTrue();
+        }
+
+        [Fact]
+        public void Repositories_Should_Not_HaveDependencyOnUseCases()
+        {
+            // Arrange
+            var assembly = typeof(Application.Interfaces.Identity.IUserService).Assembly;
+
+            // Act
+            var testsResult = Types
+                .InAssembly(assembly)
+                .That()
+                .ResideInNamespace("DientesLimpios.Application.Interfaces.Repositories")
+                .ShouldNot()
+                .HaveDependencyOn("DientesLimpios.Application.UseCases")
+                .GetResult();
+
+            // Assert
+            testsResult.IsSuccessful.Should().BeTrue();
+        }
+
+        #endregion
     }
 }

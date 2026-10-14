@@ -1,5 +1,4 @@
-﻿using DientesLimpios.Application.Interfaces.Persistence;
-using DientesLimpios.Application.Interfaces.Repositories;
+using DientesLimpios.Application.Interfaces.Persistence;
 using DientesLimpios.Application.UseCases.Dentists.Queries.GetDentistList;
 using DientesLimpios.Domain.Entities;
 using FluentAssertions;
@@ -12,76 +11,100 @@ namespace DientesLimpios.Tests.Application.UseCases.Dentists
     public class GetDentistListUseCaseTests
     {
         private readonly IApplicationDbContext _db;
-        private readonly IDentistRepository _repository;
         private readonly ILogger<GetDentistListHandler> _logger;
         private readonly GetDentistListHandler _handler;
 
         public GetDentistListUseCaseTests()
         {
             _db = Substitute.For<IApplicationDbContext>();
-            _repository = Substitute.For<IDentistRepository>();
             _logger = Substitute.For<ILogger<GetDentistListHandler>>();
 
-            _handler = new GetDentistListHandler(_repository, _logger);
-
+            _handler = new GetDentistListHandler(_db, _logger);
         }
 
         [Fact]
-        public async Task Handle_DentistsExist_ReturnsPagedDTOsCorrectly()
+        public async Task Handle_FirstPage_ReturnsPageOrderedByNameAndTotalOfAllDentists()
         {
             // Arrange
-            const int total = 7;   // deliberately != dentists.Count
-            var page = 1;
-            var pageSize = 2;
-
-            var dentist1 = Dentist.Create("Felipe", "felipe@ejemplo.com").Value;
-            var dentist2 = Dentist.Create("Claudia", "claudia@ejemplo.com").Value;
-
-            var dentists = new List<Dentist> { dentist1, dentist2 };
-
-            _repository.GetFiltered(Arg.Any<DentistFilterDTO>(), Arg.Any<CancellationToken>()).Returns((dentists, total));
-
-            var request = new GetDentistListQuery
+            var dentists = new List<Dentist>
             {
-                Page = page,
-                RecordsPerPage = pageSize
+                Dentist.Create("Felipe", "felipe@example.com").Value,
+                Dentist.Create("Claudia", "claudia@example.com").Value,
+                Dentist.Create("Mario", "mario@example.com").Value
             };
+
+            var dbSet = dentists.BuildMockDbSet();
+            _db.Dentists.Returns(dbSet);
+
+            var request = new GetDentistListQuery { Page = 1, RecordsPerPage = 2 };
 
             // Act
             var result = await _handler.Handle(request, CancellationToken.None);
 
             // Assert
             result.IsSuccess.Should().BeTrue();
-            result.Value.Total.Should().Be(total);
-            result.Value.Elements.Count.Should().Be(2);
-            result.Value.Elements[0].Name.Should().Be("Felipe");
-            result.Value.Elements[0].Email.Should().Be("felipe@ejemplo.com");
-            result.Value.Elements[1].Name.Should().Be("Claudia");
-            result.Value.Elements[1].Email.Should().Be("claudia@ejemplo.com");
-            await _repository.Received(1).GetFiltered(Arg.Any<DentistFilterDTO>(), Arg.Any<CancellationToken>());
+            result.Value.Total.Should().Be(3);
+            result.Value.Items.Select(d => d.Name).Should().Equal("Claudia", "Felipe");
+            result.Value.Items[0].Email.Should().Be("claudia@example.com");
+        }
+
+        [Fact]
+        public async Task Handle_LastPage_ReturnsRemainingDentistsAndTotalOfAllDentists()
+        {
+            // Arrange
+            var dentists = new List<Dentist>
+            {
+                Dentist.Create("Felipe", "felipe@example.com").Value,
+                Dentist.Create("Claudia", "claudia@example.com").Value,
+                Dentist.Create("Mario", "mario@example.com").Value
+            };
+
+            var dbSet = dentists.BuildMockDbSet();
+            _db.Dentists.Returns(dbSet);
+
+            var request = new GetDentistListQuery { Page = 2, RecordsPerPage = 2 };
+
+            // Act
+            var result = await _handler.Handle(request, CancellationToken.None);
+
+            // Assert
+            result.IsSuccess.Should().BeTrue();
+            result.Value.Total.Should().Be(3);
+            result.Value.Items.Select(d => d.Name).Should().Equal("Mario");
+        }
+
+        [Fact]
+        public async Task Handle_NameFilter_ReturnsOnlyMatchingDentistsAndFilteredTotal()
+        {
+            // Arrange
+            var dentists = new List<Dentist>
+            {
+                Dentist.Create("Felipe", "felipe@example.com").Value,
+                Dentist.Create("Claudia", "claudia@example.com").Value
+            };
+
+            var dbSet = dentists.BuildMockDbSet();
+            _db.Dentists.Returns(dbSet);
+
+            var request = new GetDentistListQuery { Page = 1, RecordsPerPage = 10, Name = "Clau" };
+
+            // Act
+            var result = await _handler.Handle(request, CancellationToken.None);
+
+            // Assert
+            result.IsSuccess.Should().BeTrue();
+            result.Value.Total.Should().Be(1);
+            result.Value.Items.Select(d => d.Name).Should().Equal("Claudia");
         }
 
         [Fact]
         public async Task Handle_NoDentistsExist_ReturnsEmptyListAndTotalZero()
         {
             // Arrange
-            var page = 1;
-            var pageSize = 5;
-
-            var filterDto = new DentistFilterDTO { Page = page, RecordsPerPage = pageSize };
-
-            IEnumerable<Dentist> dentists = new List<Dentist>();
-
-            _repository.GetFiltered(Arg.Any<DentistFilterDTO>(), Arg.Any<CancellationToken>()).Returns((dentists, dentists.Count()));
-
             var dbSet = new List<Dentist>().BuildMockDbSet();
             _db.Dentists.Returns(dbSet);
 
-            var request = new GetDentistListQuery
-            {
-                Page = page,
-                RecordsPerPage = pageSize
-            };
+            var request = new GetDentistListQuery { Page = 1, RecordsPerPage = 5 };
 
             // Act
             var result = await _handler.Handle(request, CancellationToken.None);
@@ -89,7 +112,7 @@ namespace DientesLimpios.Tests.Application.UseCases.Dentists
             // Assert
             result.IsSuccess.Should().BeTrue();
             result.Value.Total.Should().Be(0);
-            result.Value.Elements.Count.Should().Be(0);
+            result.Value.Items.Should().BeEmpty();
         }
     }
 }

@@ -1,4 +1,6 @@
-﻿using DientesLimpios.Application.Interfaces.Repositories;
+﻿using DientesLimpios.Application.Interfaces.Persistence;
+using DientesLimpios.Application.Interfaces.Repositories;
+using DientesLimpios.Application.UseCases.Dentists.Queries.GetDentistList;
 using DientesLimpios.Application.Utilities.Common;
 using DientesLimpios.Application.Utilities.Mediator;
 using DientesLimpios.Domain.Common.ResultPattern;
@@ -7,25 +9,29 @@ using Microsoft.Extensions.Logging;
 
 namespace DientesLimpios.Application.UseCases.Patients.Queries.GetPatientList
 {
-    public class GetPatientListHandler(IPatientRepository repository, ILogger<GetPatientListHandler> logger) : IRequestHandler<GetPatientListQuery, Result<PagedDTO<PatientListDTO>>>
+    public class GetPatientListHandler(IApplicationDbContext db, ILogger<GetPatientListHandler> logger) : IRequestHandler<GetPatientListQuery, Result<PagedDTO<PatientListDTO>>>
     {
         public async Task<Result<PagedDTO<PatientListDTO>>> Handle(GetPatientListQuery request, CancellationToken cancellationToken)
         {
             logger.LogInformation("Retrieving patient list");
 
-            var (filteredPatients, totalPatients) = await repository.GetFiltered(request, cancellationToken);
+            var patients = db.Patients.AsQueryable();
 
-            var filteredPatientsDTO = filteredPatients.Select(patient => patient.ADto()).ToList(); ;
+            if (!string.IsNullOrWhiteSpace(request.Name))
+                patients = patients.Where(d => d.Name.Contains(request.Name));
 
-            var patientsDTO = new PagedDTO<PatientListDTO>
-            {
-                Elements = filteredPatientsDTO,
-                Total = totalPatients
-            };
+            if (!string.IsNullOrWhiteSpace(request.Email))
+                patients = patients.Where(d => d.Email.Value.Contains(request.Email));
 
-            logger.LogInformation("Patient list retrieved successfully with {PatientCount} patients", patientsDTO.Elements.Count);
+            var page = await patients
+                .OrderBy(d => d.Name)
+                .ThenBy(d => d.Id)          // tie-breaker: stable pages when two patients share a name
+                .Select(d => new PatientListDTO { Id = d.Id, Name = d.Name, Email = d.Email.Value })
+                .ToPagedAsync(request.Page, request.RecordsPerPage, cancellationToken);
 
-            return Result.Success(patientsDTO);
+            logger.LogInformation("Patient list retrieved successfully with {PatientCount} patients", page.Items.Count);
+
+            return Result.Success(page);
         }
     }
 }

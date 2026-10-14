@@ -38,8 +38,6 @@ namespace DientesLimpios.Persistence
                 sp.GetRequiredService<DientesLimpiosDbContext>());
 
             //Dependency injection for repositories
-            services.AddScoped<IPatientRepository, PatientRepository>();
-            services.AddScoped<IDentistRepository, DentistRepository>();
             services.AddScoped<IAppointmentRepository, AppointmentRepository>();
 
             // Dependency injection for OutboxProcessor

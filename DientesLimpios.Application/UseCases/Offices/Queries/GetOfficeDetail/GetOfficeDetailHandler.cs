@@ -13,16 +13,17 @@ namespace DientesLimpios.Application.UseCases.Offices.Queries.GetOfficeDetail
         {
             logger.LogInformation("Retrieving office detail with ID: {OfficeId}", request.Id);
 
-            var office = await db.Offices
-                      .AsNoTracking()
-                      .FirstOrDefaultAsync(p => p.Id == request.Id, cancellationToken);
+            var officeDTO = await db.Offices
+                      .Where(o => o.Id == request.Id)
+                      .Select(o => new OfficeDetailDTO { Id = o.Id, Name = o.Name})
+                      .FirstOrDefaultAsync(cancellationToken);
 
-            if (office is null)
+            if (officeDTO is null)
                 return Result.Failure<OfficeDetailDTO>(DomainErrors.Office.NotFound);
 
             logger.LogInformation("Office detail retrieved successfully with ID: {OfficeId}", request.Id);
 
-            return Result.Success(office.ADto());
+            return Result.Success(officeDTO);
         }
     }
 }

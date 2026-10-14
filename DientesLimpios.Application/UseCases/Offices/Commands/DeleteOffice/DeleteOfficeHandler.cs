@@ -26,7 +26,7 @@ namespace DientesLimpios.Application.UseCases.Offices.Commands.DeleteOffice
                 return Result.Failure(DomainErrors.Office.HasAppointmentsConflict);
 
             db.Offices.Remove(office);
-            await db.SaveChangesAsync(cancellationToken);
+            await db.SaveChangesAsResult(cancellationToken);
 
             logger.LogInformation("Office deleted successfully with ID: {OfficeId}", request.Id);
 

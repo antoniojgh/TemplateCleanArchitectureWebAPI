@@ -21,7 +21,7 @@ do not introduce new Spanish identifiers, comments, or messages.
 | Architecture | Clean Architecture + DDD + CQRS |
 | ORM | EF Core 10, SQL Server |
 | Mediator | **Custom `SimpleMediator`** — NOT MediatR |
-| Mapping | **Hand-written extension methods** — NOT AutoMapper |
+| Mapping | **Hand-written projections** (`select new` in each query) — NOT AutoMapper |
 | Validation | FluentValidation (commands) + domain factories |
 | Auth | ASP.NET Core Identity + `MapIdentityApi`, bearer tokens |
 | Logging | Serilog (structured) |
@@ -163,12 +163,55 @@ Handlers are primary-constructor classes implementing
 `IRequestHandler<TRequest, TResponse>`, discovered by Scrutor assembly
 scanning — no manual DI registration needed.
 
-### Read side (appointments)
+### Data access: commands through the aggregate, queries straight to DTOs
+
+One rule for every aggregate:
+
+- **Queries never load an aggregate.** A query handler takes `IApplicationDbContext`
+  and projects with `Select` (or `select new`) straight into its DTO, so SQL reads
+  only the columns the DTO needs. The projection **is** the mapping: there are no
+  `MapperExtensions` anywhere, and a projection needs no `AsNoTracking`, since
+  nothing is tracked.
+- **Commands go through the aggregate.** They load the tracked aggregate, change
+  it through its own methods and save with `SaveChangesAsResult`. Dentist, office
+  and patient commands load it from the `IApplicationDbContext` DbSet; appointment
+  commands use `IAppointmentRepository`.
+- **A repository exists only when persisting the aggregate needs more than a
+  DbSet.** Today that is `IAppointmentRepository` alone (lock + overlap check +
+  save as one step, see Persistence). Do not add a repository that wraps a DbSet,
+  and never give one a filter or paging method; that is a query.
+- **Repository interfaces never reference `UseCases` types.** A filter DTO in a
+  repository signature points the dependency the wrong way.
+- Existence checks that guard a command (`db.Patients.AnyAsync(...)` in
+  `CreateAppointmentHandler`) are reads, not aggregate loads, and are allowed.
+
+`DientesLimpios.ArchitectureTests` enforces the last two structural rules:
+`QueryHandlers_Should_Not_HaveDependencyOnRepositories` (handlers under a
+`.Queries.` namespace) and `Repositories_Should_Not_HaveDependencyOnUseCases`.
+"Commands do not project" is a convention only; NetArchTest cannot express it, and
+`SendAppointmentRemindersHandler` is a command that legitimately projects.
+
+**Paged lists** use `Application/Utilities/Common/QueryablePagingExtensions`:
+filter, then `OrderBy` (plus `ThenBy(x => x.Id)` as a tie-breaker), then `Select`,
+then `ToPagedAsync(page, recordsPerPage, ct)`, which counts the filtered rows
+before `Skip`/`Take`. Paging an unordered query returns pages in an undefined
+order. Filter properties live on the query class itself (`GetDentistListQuery`),
+not on a separate filter DTO. Unit tests drive these handlers through
+`MockQueryable.NSubstitute` (`_db.Dentists.Returns(list.BuildMockDbSet())`), so
+filtering, ordering and the total are tested in the handler.
+
+```csharp
+var page = await dentists                        // filtered IQueryable<Dentist>
+    .OrderBy(d => d.Name).ThenBy(d => d.Id)
+    .Select(d => new DentistListDTO { Id = d.Id, Name = d.Name, Email = d.Email.Value })
+    .ToPagedAsync(request.Page, request.RecordsPerPage, cancellationToken);
+```
+
+#### Appointment reads
 
 An appointment read never loads the aggregate to copy a name off a related one.
-The handler takes `IApplicationDbContext` and projects with joins on the id
-columns straight into its DTO, so three strings cost three joined columns instead
-of three materialised aggregates:
+It projects with joins on the id columns straight into its DTO, so three strings
+cost three joined columns instead of three materialised aggregates:
 
 ```csharp
 from a in db.Appointments.ApplyFilter(request).OrderBy(a => a.TimeInterval.Start)
@@ -178,11 +221,10 @@ join o in db.Offices  on a.OfficeId  equals o.Id
 select new AppointmentListDTO { /* … */ Patient = p.Name, Dentist = d.Name, Office = o.Name }
 ```
 
-- There is no `MapperExtensions` under `UseCases/Appointments/` any more: the
-  `select new` **is** the mapping. `AppointmentCreatedEmailHandler`,
-  `AppointmentCancelledEmailHandler`, `AppointmentRescheduledEmailHandler` and
-  `SendAppointmentRemindersHandler` build their notification DTOs the same way,
-  which is why none of them needs the repository.
+- `AppointmentCreatedEmailHandler`, `AppointmentCancelledEmailHandler`,
+  `AppointmentRescheduledEmailHandler` and `SendAppointmentRemindersHandler` build
+  their notification DTOs the same way, which is why none of them needs the
+  repository.
 - The filter lives once, in
   `UseCases/Appointments/Utilities/AppointmentQueryExtensions.ApplyFilter`, shared
   by `GetAppointmentListHandler` and `SendAppointmentRemindersHandler`. It returns
@@ -190,8 +232,8 @@ select new AppointmentListDTO { /* … */ Patient = p.Name, Dentist = d.Name, Of
   `OrderBy` and projection. Forgetting the `OrderBy` is the easy mistake.
 - Inner joins are correct here because the foreign keys are non-nullable and
   `Restrict`ed, so a parent row cannot be missing.
-- Commands are the other half of the rule: they load the tracked aggregate through
-  `IAppointmentRepository.GetById` (no `Include`, no `AsNoTracking` — both handlers
+- Appointment commands load the tracked aggregate through
+  `IAppointmentRepository.GetById` (no `Include`, no `AsNoTracking` — the handlers
   mutate and save) and change it through its own methods.
 
 ### Mediator
@@ -325,14 +367,11 @@ asked to fix one, write the failing test first.
 
 **Structural**
 
-- Data access is still mixed, but less so: the appointment read paths are all
-  projections and the appointment commands load the aggregate through
-  `IAppointmentRepository`, which is the intended split. What remains is
-  `CreateAppointmentHandler`, which uses both (existence checks on
-  `IApplicationDbContext`, the insert through the repository), and the dentist,
-  office and patient queries, which still load entities and map them with `ADto`.
-  Preferred direction: commands through repositories/aggregates, queries
-  projecting straight to DTOs with `AsNoTracking().Select(...)`.
+- The read/write split is done (see "Data access" above) and two architecture
+  tests guard it. One query does not follow it yet: `GetOfficeListHandler` still
+  materialises every `Office` with `ToListAsync` and then maps and sorts in memory.
+  It should `OrderBy(o => o.Name).Select(...)` before `ToListAsync`. The office
+  list is also unpaged.
 - Validation is duplicated across API DataAnnotations (`API/DTOs/**`),
   FluentValidation validators and the domain factories, with divergent rules.
 - Indexes are the EF Core defaults for foreign keys plus the filtered index on
@@ -396,21 +435,21 @@ exactly-once, so do not describe it that way:
 These Spanish remnants exist. Do not add more; renaming them is welcome when
 you are already editing the file, as an explicit, separate change:
 
-`Paginar` → `Paginate` (`Persistence/Utilities/IQueryableExtensions.cs` and its
-two callers) · `ADto` → projection or `ToDto` (12 sites, all in the dentist,
-office and patient queries — the four appointment mappers were replaced by
-projections, not renamed) ·
 `AgregarServicesDeX` → `AddXServices` (8 sites) · policy `"esadmin"` → `"Admin"`
 (`Program.cs`, `IdentityServiceRegistration`, `TestAuthHandler`) ·
 `"Validacion.General"` → `"Validation.General"` (`ValidationError`) ·
-header `total-number-of-records` → `X-Total-Count` · `PagedDTO.Elements` → `Items`.
+header `total-number-of-records` → `X-Total-Count`.
 
 Already done — do not re-report these: `Pagina` / `RegistrosPorPagina` →
-`Page` / `RecordsPerPage`, `Elementos` → `Elements`, and the FluentValidation
-messages, which are all English now.
+`Page` / `RecordsPerPage`, `Elementos` → `Elements` → `Items` (`PagedDTO.Items`,
+serialised as `items` — a breaking change to the paged list's JSON for clients
+built against `elements`), `Paginar` → `Paginate`
+(now `Application/Utilities/Common/QueryablePagingExtensions`), every `ADto`
+(replaced by projections, not renamed), and the FluentValidation messages, which
+are all English now.
 
 The README was rewritten on 16 September 2026 and describes the current code
-(custom mediator, hand-written mappers, outbox). It is no longer stale — keep it
+(custom mediator, projections instead of mappers, outbox). It is no longer stale — keep it
 in step when you change the architecture.
 
 ---
